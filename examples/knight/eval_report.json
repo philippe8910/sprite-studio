@@ -1,0 +1,29 @@
+{
+ "total": 2,
+ "passed": 2,
+ "fail_kinds": {},
+ "results": [
+  {
+   "set": ".",
+   "anim": "idle",
+   "pass": true,
+   "fails": [],
+   "frames": 8,
+   "dup_pairs": 5,
+   "seam_ratio": 0.84,
+   "feet_range": 0,
+   "warns": [
+    "dup"
+   ]
+  },
+  {
+   "set": ".",
+   "anim": "walk",
+   "pass": true,
+   "fails": [],
+   "frames": 10,
+   "seam_ratio": 0.94,
+   "warns": []
+  }
+ ]
+}

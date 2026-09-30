@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import random
 import time
 import traceback
 import uuid
@@ -26,6 +27,8 @@ import falcatalog
 import falclient
 import gamespec
 import localgen
+import jobstore
+import repair
 import pipeline
 import presets
 
@@ -34,6 +37,9 @@ DATA = os.path.join(ROOT, "data")
 PROJECTS = os.path.join(DATA, "projects")
 POSELIB = os.path.join(ROOT, "poselib")
 os.makedirs(PROJECTS, exist_ok=True)
+JOBS = jobstore.JobStore(os.path.join(DATA, "jobs.json"))   # 任務狀態寫檔，重啟後仍可查
+sys.path.insert(0, os.path.join(ROOT, "tools"))
+import eval_sprites  # noqa: E402
 os.makedirs(POSELIB, exist_ok=True)
 
 app = Flask(__name__, static_folder=os.path.join(ROOT, "static"), static_url_path="/static")
@@ -49,7 +55,7 @@ def _no_cache_static(resp):
     return resp
 
 LOCK = threading.Lock()
-JOBS = {}
+# JOBS（任務狀態，會寫檔）在上方 DATA 建好後初始化
 SETTINGS_PATH = os.path.join(ROOT, "settings.json")
 
 DEFAULT_SETTINGS = {
@@ -214,21 +220,19 @@ def new_job(kind, pid, label):
     JOBS[jid] = {"id": jid, "kind": kind, "pid": pid, "label": label,
                  "status": "queued", "progress": 0, "message": "排隊中…",
                  "created": now(), "result": None, "error": None, "items": []}
+    JOBS.save()
     return JOBS[jid]
 
 
 def run_job(job, fn):
     def wrap():
-        job["status"] = "running"
+        JOBS.transition(job, "running")
         try:
             job["result"] = fn(job)
-            job["status"] = "done"
-            job["progress"] = 100
-            job["message"] = "完成"
+            JOBS.transition(job, "done", progress=100, message="完成")
         except Exception as e:
-            job["status"] = "error"
-            job["error"] = f"{type(e).__name__}: {e}"
-            job["message"] = job["error"]
+            err = f"{type(e).__name__}: {e}"
+            JOBS.transition(job, "error", error=err, message=err)
             traceback.print_exc()
     t = threading.Thread(target=wrap, daemon=True)
     t.start()
@@ -1149,12 +1153,36 @@ def api_clip_generate(pid, clip):
             job["progress"] = {"IN_QUEUE": 10, "IN_PROGRESS": 45, "COMPLETED": 70}.get(s, 20)
             job["request_id"] = rid
 
-        result = falclient.run(model["id"], payload, on_status=status, poll=2.5, timeout=1800)
+        with open(img_path, "rb") as fimg:
+            key = repair.cache_key(model["id"], prompt, neg, fimg.read(),
+                                   {k: v for k, v in payload.items() if k not in ("image_url", "image_urls")})
+        with LOCK:
+            proj = load_project(pid)
+            pend = proj.setdefault("pending_gen", {}).get(key)
+        cost = model["price"]
+        if pend and now() - pend.get("created", 0) < 6 * 3600:
+            # 同一組輸入的請求已經送過（可能上次下載失敗或伺服器重啟）：接回去拿結果，不再付費
+            job["message"] = "沿用先前送出的同一請求…"
+            result = falclient.resume(pend, on_status=status, poll=2.5, timeout=1800)
+            cost = 0.0
+        else:
+            def on_submit(info):
+                with LOCK:
+                    proj = load_project(pid)
+                    proj.setdefault("pending_gen", {})[key] = dict(info, created=now(), clip=clip)
+                    save_project(proj)
+            result = falclient.run(model["id"], payload, on_status=status, poll=2.5, timeout=1800,
+                                   on_submit=on_submit)
         url = falclient.first_video_url(result)
         vpath = os.path.join(pdir(pid), "videos", f"{clip}_{take_id}.mp4")
         os.makedirs(os.path.dirname(vpath), exist_ok=True)
         falclient.download(url, vpath)
-        return finish_take(vpath, {"model": model_key, "cost": model["price"]})
+        out = finish_take(vpath, {"model": model_key, "cost": cost, "gen_key": key})
+        with LOCK:
+            proj = load_project(pid)
+            proj.get("pending_gen", {}).pop(key, None)    # 成功存成 take 才清掉
+            save_project(proj)
+        return out
 
     run_job(job, work_local if is_local else work)
     return jsonify({"job": job["id"]})
@@ -1320,16 +1348,8 @@ def api_loop_suggest(pid, clip):
 
 # ---------------------------------------------------------------- 打包輸出
 
-@app.post("/api/projects/<pid>/pack")
-def api_pack(pid):
-    p = load_project(pid)
-    body = request.get_json(force=True, silent=True) or {}
-    names = body.get("clips") or [k for k, c in p.get("clips", {}).items() if c.get("frames")]
-    packcfg = dict(p.get("pack", {}))
-    packcfg.update({k: v for k, v in body.items() if k in ("frame_w", "outline_dark", "outline_px", "pad")})
-    p["pack"] = packcfg
-    save_project(p)
-
+def _pack_specs(p, names):
+    pid = p["id"]
     specs = []
     for name in names:
         c = p["clips"].get(name)
@@ -1346,43 +1366,166 @@ def api_pack(pid):
             "xalign": c.get("xalign", "median"), "despeckle": bool(c.get("despeckle")),
             "clear_warm": c.get("clear_warm"),
         })
+    return specs
+
+
+def _do_pack(pid, specs, packcfg, job):
+    out_dir = os.path.join(pdir(pid), "out")
+    shutil.rmtree(out_dir, ignore_errors=True)
+    done = [0]
+
+    def prog(name, n):
+        done[0] += 1
+        job["progress"] = int(done[0] / len(specs) * 80)
+        job["message"] = f"處理 {name}（{n} 幀）"
+
+    meta = pipeline.pack(specs, out_dir,
+                         frame_w=int(packcfg.get("frame_w", 240)),
+                         pad=int(packcfg.get("pad", 6)),
+                         outline_dark=float(packcfg.get("outline_dark", 0.32)),
+                         outline_px=int(packcfg.get("outline_px", 0)),
+                         progress=prog)
+    job["progress"] = 88
+    with open(os.path.join(out_dir, "anims.json"), "w", encoding="utf-8") as f:
+        json.dump(meta, f, indent=1, ensure_ascii=False)
+    zpath = os.path.join(out_dir, "sprites.zip")
+    with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
+        for fn in sorted(os.listdir(out_dir)):
+            if fn != "sprites.zip":
+                z.write(os.path.join(out_dir, fn), fn)
+    with LOCK:
+        proj = load_project(pid)
+        proj["last_pack"] = {"at": now(), "meta": meta, "clips": [s["name"] for s in specs]}
+        save_project(proj)
+    return meta
+
+
+@app.post("/api/projects/<pid>/pack")
+def api_pack(pid):
+    p = load_project(pid)
+    body = request.get_json(force=True, silent=True) or {}
+    names = body.get("clips") or [k for k, c in p.get("clips", {}).items() if c.get("frames")]
+    packcfg = dict(p.get("pack", {}))
+    packcfg.update({k: v for k, v in body.items() if k in ("frame_w", "outline_dark", "outline_px", "pad")})
+    p["pack"] = packcfg
+    save_project(p)
+    specs = _pack_specs(p, names)
     if not specs:
         abort(400, "沒有可打包的動作（請先挑幀）")
-
     job = new_job("pack", pid, f"打包 {len(specs)} 個動作")
 
     def work(job):
-        out_dir = os.path.join(pdir(pid), "out")
-        shutil.rmtree(out_dir, ignore_errors=True)
-        done = [0]
-
-        def prog(name, n):
-            done[0] += 1
-            job["progress"] = int(done[0] / len(specs) * 80)
-            job["message"] = f"處理 {name}（{n} 幀）"
-
-        meta = pipeline.pack(specs, out_dir,
-                             frame_w=int(packcfg.get("frame_w", 240)),
-                             pad=int(packcfg.get("pad", 6)),
-                             outline_dark=float(packcfg.get("outline_dark", 0.32)),
-                             outline_px=int(packcfg.get("outline_px", 0)),
-                             progress=prog)
-        job["progress"] = 88
-        with open(os.path.join(out_dir, "anims.json"), "w", encoding="utf-8") as f:
-            json.dump(meta, f, indent=1, ensure_ascii=False)
-
-        zpath = os.path.join(out_dir, "sprites.zip")
-        with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
-            for fn in sorted(os.listdir(out_dir)):
-                if fn != "sprites.zip":
-                    z.write(os.path.join(out_dir, fn), fn)
+        meta = _do_pack(pid, specs, packcfg, job)
         job["message"] = "完成"
-        with LOCK:
-            proj = load_project(pid)
-            proj["last_pack"] = {"at": now(), "meta": meta,
-                                 "clips": [s["name"] for s in specs]}
-            save_project(proj)
         return {"meta": meta, "zip": furl(pid, "out/sprites.zip")}
+
+    run_job(job, work)
+    return jsonify({"job": job["id"]})
+
+
+# ---------------------------------------------------------------- 自動修復
+
+def _summary(results):
+    fails = {}
+    for r in results:
+        for f in r["fails"]:
+            fails[f] = fails.get(f, 0) + 1
+    return {"total": len(results), "passed": sum(r["pass"] for r in results), "fails": fails,
+            "failed": [r["anim"] for r in results if not r["pass"]]}
+
+
+def _wait_job(jid, timeout=2400):
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        j = JOBS.get(jid) or {}
+        if j.get("status") in ("done", "error", "interrupted"):
+            return j
+        time.sleep(2)
+    raise RuntimeError(f"job {jid} 逾時")
+
+
+@app.post("/api/projects/<pid>/repair")
+def api_repair(pid):
+    """評估打包結果 → 依失敗類型修復 → 重新打包 → 再評估，並把前後結果寫進 repairs.jsonl。
+
+    免費修復（重挑循環段、腳底對齊、縮放）一律先做；allow_paid=true 才會對
+    素材本身壞掉的動作重新生成影片（新 seed），生成後自動挑循環段。
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    allow_paid = bool(body.get("allow_paid"))
+    optimize_loops = bool(body.get("optimize_loops"))
+    out_dir = os.path.join(pdir(pid), "out")
+    if not os.path.exists(os.path.join(out_dir, "anims.json")):
+        abort(400, "還沒打包，無法評估")
+    job = new_job("repair", pid, "自動評估與修復")
+
+    def work(job):
+        t0 = time.time()
+        before = eval_sprites.evaluate(out_dir)
+        plans = repair.plan(before)
+        if optimize_loops:
+            # 事後評估抓不到「循環段長度選錯」（例如側面走路的半週期輪廓幾乎一樣），
+            # 所以可以選擇主動替每個循環動作重新搜尋接縫最小的段落
+            for name, c in load_project(pid).get("clips", {}).items():
+                if c.get("frames") and c.get("loop", True) and name not in plans:
+                    plans[name] = [dict(repair.ACTIONS["seam_jump"], fail="optimize_loop")]
+        log = {"at": now(), "allow_paid": allow_paid, "before": _summary(before),
+               "plans": plans, "actions": {}, "regenerated": [], "cost_usd": 0.0}
+        if not plans:
+            log["after"] = log["before"]
+            job["message"] = "全部通過，不需修復"
+        else:
+            with LOCK:
+                p = load_project(pid)
+                paid = []
+                for anim, acts in plans.items():
+                    c = p["clips"].get(anim)
+                    if not c:
+                        continue
+                    if not acts[0]["free"]:
+                        paid.append(anim)
+                        continue
+                    sigs = None
+                    if any(a["action"] == "reloop" for a in acts):
+                        take = next((t for t in c.get("takes", []) if t["id"] == c.get("selected_take")),
+                                    (c.get("takes") or [None])[0])
+                        if take:
+                            sigs = pipeline.frame_signatures(os.path.join(pdir(pid), take["frames_dir"]),
+                                                             take["count"])
+                    log["actions"][anim] = repair.apply_free(c, acts, sigs)
+                save_project(p)
+            if allow_paid and paid:
+                client = app.test_client()
+                for anim in paid:
+                    job["message"] = f"重新生成 {anim}…"
+                    r = client.post(f"/api/projects/{pid}/clips/{anim}/generate",
+                                    json={"seed": random.randint(1, 2**31 - 1)})
+                    j = _wait_job(r.get_json()["job"])
+                    if j.get("status") != "done":
+                        log["regenerated"].append({"anim": anim, "ok": False, "error": j.get("error")})
+                        continue
+                    with LOCK:
+                        p = load_project(pid)
+                        c = p["clips"][anim]
+                        take = c["takes"][0]
+                        log["cost_usd"] += float(take.get("cost") or 0)
+                        if c.get("loop", True):
+                            sigs = pipeline.frame_signatures(os.path.join(pdir(pid), take["frames_dir"]),
+                                                             take["count"])
+                            lp = repair.best_loop(sigs, max(4, len(c.get("frames") or []) or 8))
+                            if lp:
+                                c["frames"] = lp["frames"]
+                        save_project(p)
+                    log["regenerated"].append({"anim": anim, "ok": True, "take": take["id"]})
+            job["message"] = "重新打包…"
+            p = load_project(pid)
+            names = (p.get("last_pack") or {}).get("clips") or [k for k, c in p["clips"].items() if c.get("frames")]
+            _do_pack(pid, _pack_specs(p, names), dict(p.get("pack", {})), job)
+            log["after"] = _summary(eval_sprites.evaluate(out_dir))
+        log["seconds"] = round(time.time() - t0, 1)
+        with open(os.path.join(pdir(pid), "repairs.jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps(log, ensure_ascii=False) + "\n")
+        return log
 
     run_job(job, work)
     return jsonify({"job": job["id"]})

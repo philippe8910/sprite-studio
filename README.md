@@ -1,5 +1,7 @@
 # Sprite Studio
 
+[![tests](https://github.com/philippe8910/sprite-studio/actions/workflows/tests.yml/badge.svg)](https://github.com/philippe8910/sprite-studio/actions/workflows/tests.yml)
+
 **從一張角色立繪，到遊戲可用的 sprite sheet。**
 用 AI 生成角色立繪與動作影片，再自動抽幀、去背、找循環、對齊、打包成遊戲素材；
 打包後自動評估品質，失敗時依類型分類，只重做壞掉的那一支動作。適用任何 2D 側捲軸角色（不限題材與裝備）。
@@ -59,6 +61,53 @@ python tools/eval_sprites.py <素材資料夾> --json report.json
 標出 12 個待修（被畫框切到 8、循環接縫跳動 4）。規則經過抽查修正以排除誤判：
 一次性動作（攻擊等）的接縫不算循環跳動、走跑跳類不檢查腳底、倒地角色貼齊下緣不算裁切。
 
+## 自動修復：評估 → 分類 → 只修壞掉的
+
+```bash
+POST /api/projects/<pid>/repair   {"optimize_loops": true, "allow_paid": false}
+```
+
+打包後自動評估，依失敗類型決定修法，**先做免費的本地修復，修不好才花錢重新生成**，
+修完重新打包、再評估一次，前後結果寫進專案的 `repairs.jsonl`。
+
+| 失敗類型 | 修法 | 花費 |
+|---|---|---|
+| 循環接縫跳動／停頓 | 在整段影片中重新搜尋接縫最小的循環段，重挑幀 | 免費 |
+| 腳底漂移 | 開啟腳底對齊 | 免費 |
+| 被畫框切到 | 縮小 10% 重新置中 | 免費 |
+| 空白幀、幀數不足 | 以新 seed 重新生成影片，並自動挑循環段（需 `allow_paid`） | 付費 |
+
+**實測（上方騎士的 walk）**：工具生成影片後的預設挑幀是每 10 幀取一張，
+開啟 `optimize_loops` 後自動找到週期 36 幀的循環段，**循環接縫 / 正常步距從 0.55 降到 0.23**，
+整個修復 3.6 秒、花費 $0。
+
+![預設挑幀 vs 自動搜尋循環段](docs/img/loop_before_after.png)
+
+**已知限制**：事後評估的接縫檢查對「側面走路只取半個週期」這類錯誤不敏感——
+左右腳互換後輪廓幾乎一樣，接縫看起來很順。實測時漏抓，所以循環段改由 `optimize_loops`
+主動搜尋，而不是只靠事後評估；待機這種幾乎靜止的動作，接縫比值因步距趨近 0 而不具參考性。
+
+## 可靠性
+
+| 問題 | 做法 | 程式位置 |
+|---|---|---|
+| 伺服器重啟，任務狀態消失 | 任務狀態寫入 `data/jobs.json`（暫存檔＋原子替換）；重啟時把未完成的任務標成「中斷」，不會謊報還在跑 | `jobstore.py` |
+| 同時送太多請求被限流 | 全域併發上限（預設 4，`FAL_MAX_CONCURRENT` 可調） | `falclient.py` |
+| 暫時性錯誤（429 / 5xx / 斷線） | 送出、取結果、下載都以指數退避重試；4xx 立即失敗不重送；輪詢連續失敗 20 次就放棄並回報 request id | `falclient.py` |
+| 下載失敗或重啟後重送 = 重複付費 | 送出後立刻記下 request id；同一組輸入（模型・提示詞・起始圖・參數的雜湊）再送出時，接回原請求取結果，不重新計費 | `server.py`、`repair.cache_key` |
+
+## 測試
+
+```bash
+pip install -r requirements-dev.txt
+pytest -q tests                                  # 19 個測試
+python tools/eval_sprites.py examples/knight     # 範例素材評估
+```
+
+涵蓋評估規則（空白幀、裁切、接縫、腳底、重複幀）、循環搜尋、修復計畫、快取鍵、
+重試與退避、接回既有請求不重送、任務重啟後的狀態。每次 push 由 GitHub Actions 自動執行。
+測試寫完後以「故意改壞程式」確認測試真的會失敗。
+
 ## 啟動
 
 ```bash
@@ -83,6 +132,10 @@ python server.py                            # 或雙擊 run.bat
 | `gamespec.py` | 從既有遊戲讀取素材慣例（格子大小、腳底錨點） |
 | `static/` | 無框架前端（單頁） |
 | `tools/eval_sprites.py` | 自動品質評估 |
+| `repair.py` | 失敗分類、修復計畫、循環搜尋、生成快取鍵 |
+| `jobstore.py` | 任務狀態持久化 |
+| `tests/` | pytest 測試 |
+| `examples/knight/` | 範例素材與評估報告 |
 | `tools/build_mac.py` | 產生 macOS 可攜版 |
 | `docs/NOTES_zh.md` | 詳細操作筆記 |
 

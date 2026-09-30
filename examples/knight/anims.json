@@ -1,0 +1,31 @@
+{
+ "idle": {
+  "file": "idle.png",
+  "frameW": 240,
+  "frameH": 426,
+  "count": 8,
+  "fps": 8,
+  "loop": true
+ },
+ "walk": {
+  "file": "walk.png",
+  "frameW": 240,
+  "frameH": 426,
+  "count": 10,
+  "fps": 10,
+  "loop": true
+ },
+ "_feetRatio": 0.9942,
+ "_anchorX": 0.5154,
+ "_canvas": {
+  "w": 1800,
+  "h": 1440,
+  "feetLine": 1324,
+  "crop": [
+   521,
+   121,
+   1203,
+   1331
+  ]
+ }
+}
