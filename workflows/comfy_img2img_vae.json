@@ -1,0 +1,126 @@
+{
+ "_meta": {
+  "label": "ComfyUI img2img ＋外掛 VAE",
+  "kind": "image",
+  "note": "合併模型（Counterfeit / AbyssOrangeMix 之類）內建 VAE 常常讓畫面發暗發灰，用這份指定外掛 VAE（設定頁選 vae-ft-mse-840000）。其餘同 comfy_img2img。 VAE 解碼用分塊（VAEDecodeTiled），6GB 顯存才不會在解碼那步爆掉。"
+ },
+ "1": {
+  "class_type": "CheckpointLoaderSimple",
+  "inputs": {
+   "ckpt_name": "%model%"
+  }
+ },
+ "2": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": "%image%",
+   "upload": "image"
+  }
+ },
+ "3": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "%prompt%",
+   "clip": [
+    "1",
+    1
+   ]
+  }
+ },
+ "4": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "%negative%",
+   "clip": [
+    "1",
+    1
+   ]
+  }
+ },
+ "5": {
+  "class_type": "VAEEncode",
+  "inputs": {
+   "pixels": [
+    "9",
+    0
+   ],
+   "vae": [
+    "10",
+    0
+   ]
+  }
+ },
+ "6": {
+  "class_type": "KSampler",
+  "inputs": {
+   "seed": "%seed%",
+   "steps": "%steps%",
+   "cfg": "%cfg%",
+   "sampler_name": "dpmpp_2m",
+   "scheduler": "karras",
+   "denoise": "%denoise%",
+   "model": [
+    "1",
+    0
+   ],
+   "positive": [
+    "3",
+    0
+   ],
+   "negative": [
+    "4",
+    0
+   ],
+   "latent_image": [
+    "5",
+    0
+   ]
+  }
+ },
+ "7": {
+  "class_type": "VAEDecodeTiled",
+  "inputs": {
+   "samples": [
+    "6",
+    0
+   ],
+   "vae": [
+    "10",
+    0
+   ],
+   "tile_size": 512,
+   "overlap": 64,
+   "temporal_size": 64,
+   "temporal_overlap": 8
+  }
+ },
+ "8": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "images": [
+    "7",
+    0
+   ],
+   "filename_prefix": "sprite_studio"
+  }
+ },
+ "9": {
+  "class_type": "ImageScale",
+  "inputs": {
+   "image": [
+    "2",
+    0
+   ],
+   "upscale_method": "lanczos",
+   "width": "%width%",
+   "height": "%height%",
+   "crop": "center"
+  }
+ },
+ "10": {
+  "class_type": "VAELoader",
+  "inputs": {
+   "vae_name": "%vae%"
+  }
+ }
+}

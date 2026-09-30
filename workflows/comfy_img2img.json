@@ -1,0 +1,120 @@
+{
+ "_meta": {
+  "label": "ComfyUI img2img（純核心節點）",
+  "kind": "image",
+  "note": "只用 ComfyUI 內建節點，任何 SD1.5/SDXL checkpoint 都能跑。model 佔位符會填入設定頁選的 checkpoint。denoise 越低越像原圖（0.5~0.7 適合改姿勢不改角色）。 輸入會先縮到設定的尺寸（SD1.5 用 512、SDXL 用 1024，否則構圖會重複）。 VAE 解碼用分塊（VAEDecodeTiled），6GB 顯存才不會在解碼那步爆掉。"
+ },
+ "1": {
+  "class_type": "CheckpointLoaderSimple",
+  "inputs": {
+   "ckpt_name": "%model%"
+  }
+ },
+ "2": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": "%image%",
+   "upload": "image"
+  }
+ },
+ "3": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "%prompt%",
+   "clip": [
+    "1",
+    1
+   ]
+  }
+ },
+ "4": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "%negative%",
+   "clip": [
+    "1",
+    1
+   ]
+  }
+ },
+ "5": {
+  "class_type": "VAEEncode",
+  "inputs": {
+   "pixels": [
+    "9",
+    0
+   ],
+   "vae": [
+    "1",
+    2
+   ]
+  }
+ },
+ "6": {
+  "class_type": "KSampler",
+  "inputs": {
+   "seed": "%seed%",
+   "steps": "%steps%",
+   "cfg": "%cfg%",
+   "sampler_name": "dpmpp_2m",
+   "scheduler": "karras",
+   "denoise": "%denoise%",
+   "model": [
+    "1",
+    0
+   ],
+   "positive": [
+    "3",
+    0
+   ],
+   "negative": [
+    "4",
+    0
+   ],
+   "latent_image": [
+    "5",
+    0
+   ]
+  }
+ },
+ "7": {
+  "class_type": "VAEDecodeTiled",
+  "inputs": {
+   "samples": [
+    "6",
+    0
+   ],
+   "vae": [
+    "1",
+    2
+   ],
+   "tile_size": 512,
+   "overlap": 64,
+   "temporal_size": 64,
+   "temporal_overlap": 8
+  }
+ },
+ "8": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "images": [
+    "7",
+    0
+   ],
+   "filename_prefix": "sprite_studio"
+  }
+ },
+ "9": {
+  "class_type": "ImageScale",
+  "inputs": {
+   "image": [
+    "2",
+    0
+   ],
+   "upscale_method": "lanczos",
+   "width": "%width%",
+   "height": "%height%",
+   "crop": "center"
+  }
+ }
+}

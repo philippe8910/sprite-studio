@@ -1,0 +1,8 @@
+# Sprite Studio 相依套件
+# opencv 鎖在 4.x：Windows 上實際在用、也實測過的是 4.13，5.x 有 API 變動沒驗過。
+flask>=3.0,<4
+numpy>=1.24,<3
+opencv-python-headless>=4.8,<5
+# certifi：python.org 版的 macOS Python 不吃系統鑰匙圈，沒有 CA bundle 就會
+# CERTIFICATE_VERIFY_FAILED（連不上 fal.run）。launcher 會把 SSL_CERT_FILE 指到這裡。
+certifi

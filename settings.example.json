@@ -1,0 +1,48 @@
+{
+  "local": {
+    "comfy_url": "http://127.0.0.1:8188",
+    "a1111_url": "http://127.0.0.1:7860",
+    "image": {
+      "kind": "comfyui",
+      "workflow": "comfy_img2img_vae.json",
+      "model": "Counterfeit-V2.5_pruned.safetensors",
+      "vae": "vae-ft-mse-840000.safetensors",
+      "steps": 24,
+      "cfg": 7,
+      "denoise": 0.35,
+      "width": 512,
+      "height": 512,
+      "sampler": "DPM++ 2M"
+    },
+    "video": {
+      "kind": "comfyui",
+      "workflow": "",
+      "model": "",
+      "steps": 20,
+      "cfg": 5.0,
+      "frames": 81,
+      "fps": 16,
+      "width": 720,
+      "height": 720
+    }
+  },
+  "extract": {
+    "preview_w": 320,
+    "hue_lo": 35,
+    "hue_hi": 90,
+    "dom": 25,
+    "sat": 60,
+    "val": 40
+  },
+  "defaults": {
+    "image_model": "nano-banana",
+    "video_model": "kling25",
+    "pose_n": 5,
+    "frame_w": 240
+  },
+  "fal": {
+    "api_key": "",
+    "catalog": true
+  },
+  "char_poses": []
+}

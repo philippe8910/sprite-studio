@@ -1,0 +1,155 @@
+{
+ "_meta": {
+  "label": "ComfyUI 參考圖疊合 img2img（純核心節點）",
+  "kind": "image",
+  "note": "把角色圖(%image%)和參考姿勢圖(%image2%)疊合後再 img2img。blend 0=只有角色、1=只有參考；0.3~0.5 配 denoise 0.5~0.7 可做姿勢轉移。要真正的特徵參考請改用 IPAdapter workflow（一樣吃 %image2%）。 VAE 解碼用分塊（VAEDecodeTiled），6GB 顯存才不會在解碼那步爆掉。"
+ },
+ "1": {
+  "class_type": "CheckpointLoaderSimple",
+  "inputs": {
+   "ckpt_name": "%model%"
+  }
+ },
+ "2": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": "%image%",
+   "upload": "image"
+  }
+ },
+ "3": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": "%image2%",
+   "upload": "image"
+  }
+ },
+ "4": {
+  "class_type": "ImageScale",
+  "inputs": {
+   "image": [
+    "3",
+    0
+   ],
+   "upscale_method": "lanczos",
+   "width": "%width%",
+   "height": "%height%",
+   "crop": "center"
+  }
+ },
+ "5": {
+  "class_type": "ImageScale",
+  "inputs": {
+   "image": [
+    "2",
+    0
+   ],
+   "upscale_method": "lanczos",
+   "width": "%width%",
+   "height": "%height%",
+   "crop": "center"
+  }
+ },
+ "6": {
+  "class_type": "ImageBlend",
+  "inputs": {
+   "image1": [
+    "5",
+    0
+   ],
+   "image2": [
+    "4",
+    0
+   ],
+   "blend_factor": "%blend%",
+   "blend_mode": "normal"
+  }
+ },
+ "7": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "%prompt%",
+   "clip": [
+    "1",
+    1
+   ]
+  }
+ },
+ "8": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "%negative%",
+   "clip": [
+    "1",
+    1
+   ]
+  }
+ },
+ "9": {
+  "class_type": "VAEEncode",
+  "inputs": {
+   "pixels": [
+    "6",
+    0
+   ],
+   "vae": [
+    "1",
+    2
+   ]
+  }
+ },
+ "10": {
+  "class_type": "KSampler",
+  "inputs": {
+   "seed": "%seed%",
+   "steps": "%steps%",
+   "cfg": "%cfg%",
+   "sampler_name": "dpmpp_2m",
+   "scheduler": "karras",
+   "denoise": "%denoise%",
+   "model": [
+    "1",
+    0
+   ],
+   "positive": [
+    "7",
+    0
+   ],
+   "negative": [
+    "8",
+    0
+   ],
+   "latent_image": [
+    "9",
+    0
+   ]
+  }
+ },
+ "11": {
+  "class_type": "VAEDecodeTiled",
+  "inputs": {
+   "samples": [
+    "10",
+    0
+   ],
+   "vae": [
+    "1",
+    2
+   ],
+   "tile_size": 512,
+   "overlap": 64,
+   "temporal_size": 64,
+   "temporal_overlap": 8
+  }
+ },
+ "12": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "images": [
+    "11",
+    0
+   ],
+   "filename_prefix": "ss_ref"
+  }
+ }
+}

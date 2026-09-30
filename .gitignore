@@ -1,0 +1,7 @@
+data/
+dist/
+settings.json
+__pycache__/
+*.pyc
+*.log
+*.err

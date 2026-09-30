@@ -1,0 +1,140 @@
+{
+ "_meta": {
+  "label": "ComfyUI 局部替換（純核心節點）",
+  "kind": "inpaint",
+  "note": "遮罩白色＝要重畫的區域。VAEEncodeForInpaint 會把遮罩區塗掉重生成，所以 denoise 固定 1.0；grow_mask_by 讓邊緣過渡自然。用一般 checkpoint 就行，專用 inpainting 模型效果更好。 VAE 解碼用分塊（VAEDecodeTiled），6GB 顯存才不會在解碼那步爆掉。"
+ },
+ "1": {
+  "class_type": "CheckpointLoaderSimple",
+  "inputs": {
+   "ckpt_name": "%model%"
+  }
+ },
+ "2": {
+  "class_type": "LoadImage",
+  "inputs": {
+   "image": "%image%",
+   "upload": "image"
+  }
+ },
+ "3": {
+  "class_type": "LoadImageMask",
+  "inputs": {
+   "image": "%mask%",
+   "channel": "red",
+   "upload": "image"
+  }
+ },
+ "4": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "%prompt%",
+   "clip": [
+    "1",
+    1
+   ]
+  }
+ },
+ "5": {
+  "class_type": "CLIPTextEncode",
+  "inputs": {
+   "text": "%negative%",
+   "clip": [
+    "1",
+    1
+   ]
+  }
+ },
+ "6": {
+  "class_type": "VAEEncodeForInpaint",
+  "inputs": {
+   "pixels": [
+    "2",
+    0
+   ],
+   "vae": [
+    "1",
+    2
+   ],
+   "mask": [
+    "3",
+    0
+   ],
+   "grow_mask_by": 8
+  }
+ },
+ "7": {
+  "class_type": "KSampler",
+  "inputs": {
+   "seed": "%seed%",
+   "steps": "%steps%",
+   "cfg": "%cfg%",
+   "sampler_name": "dpmpp_2m",
+   "scheduler": "karras",
+   "denoise": 1.0,
+   "model": [
+    "1",
+    0
+   ],
+   "positive": [
+    "4",
+    0
+   ],
+   "negative": [
+    "5",
+    0
+   ],
+   "latent_image": [
+    "6",
+    0
+   ]
+  }
+ },
+ "8": {
+  "class_type": "VAEDecodeTiled",
+  "inputs": {
+   "samples": [
+    "7",
+    0
+   ],
+   "vae": [
+    "1",
+    2
+   ],
+   "tile_size": 512,
+   "overlap": 64,
+   "temporal_size": 64,
+   "temporal_overlap": 8
+  }
+ },
+ "9": {
+  "class_type": "ImageCompositeMasked",
+  "inputs": {
+   "destination": [
+    "2",
+    0
+   ],
+   "source": [
+    "8",
+    0
+   ],
+   "x": 0,
+   "y": 0,
+   "resize_source": false,
+   "mask": [
+    "3",
+    0
+   ]
+  }
+ },
+ "10": {
+  "class_type": "SaveImage",
+  "inputs": {
+   "images": [
+    "9",
+    0
+   ],
+   "filename_prefix": "ss_inpaint"
+  }
+ }
+}

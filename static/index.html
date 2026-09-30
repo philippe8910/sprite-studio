@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sprite Studio</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<svg class="icons-def" aria-hidden="true">
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5h3v14H8zM13 5h3v14h-3z" fill="currentColor"/></symbol>
+  <symbol id="i-wand" viewBox="0 0 24 24"><path d="M12 3l1.7 4.3L18 9l-4.3 1.7L12 15l-1.7-4.3L6 9l4.3-1.7zM18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8zM5 15l.6 1.4L7 17l-1.4.6L5 19l-.6-1.4L3 17l1.4-.6z" fill="currentColor"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6.5 7l1 12h9l1-12"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5 9 17.5 20 6.5"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><path d="M9 9h10v11H9zM5 15V4h10"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><path d="M15.5 4a4.5 4.5 0 1 0-3.6 7.2L4 19v2h3v-2h2v-2h2l1.9-1.9A4.5 4.5 0 0 0 15.5 4z"/></symbol>
+  <symbol id="i-keyboard" viewBox="0 0 24 24"><path d="M3 7h18v10H3zM7 11h.5M11 11h.5M15 11h.5M8 15h8"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.5M3.5 12h.5M3.5 18h.5"/></symbol>
+  <symbol id="i-package" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v9"/></symbol>
+  <symbol id="i-scissors" viewBox="0 0 24 24"><path d="M6.5 6.5 18 18M18 6.5 6.5 18M8 19a2.2 2.2 0 1 1-4.4 0 2.2 2.2 0 0 1 4.4 0M20.4 19a2.2 2.2 0 1 1-4.4 0 2.2 2.2 0 0 1 4.4 0"/></symbol>
+  <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M17 2.5 21 6l-4 3.5M3 12V9a3 3 0 0 1 3-3h15M7 21.5 3 18l4-3.5M21 12v3a3 3 0 0 1-3 3H3"/></symbol>
+  <symbol id="i-invert" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/><path d="M21 12a9 9 0 1 0-18 0 9 9 0 0 0 18 0"/></symbol>
+  <symbol id="i-eraser" viewBox="0 0 24 24"><path d="M4 20h16M8.5 17 3.8 12.3a1.5 1.5 0 0 1 0-2.1l6.4-6.4a1.5 1.5 0 0 1 2.1 0l5 5a1.5 1.5 0 0 1 0 2.1L11.6 17z"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5zM8 4v6h8V4M8 20v-6h8v6"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5zM3 16l9 5 9-5M3 12l9 5 9-5"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6M12 2v3M12 19v3M2 12h3M19 12h3M5.2 5.2 7.3 7.3M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><path d="M3 5h18v14H3zM9.5 10a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0M3 16l5-4 4 3 3-2 6 5"/></symbol>
+</svg>
+
+<header class="topbar">
+  <span class="mark"></span>
+  <b class="title">Sprite Studio</b>
+  <span class="sep"></span>
+  <span class="grow"></span>
+  <span class="stat" title="本專案累計雲端 API 花費">花費 <b id="spend">$0.00</b></span>
+  <button class="btn" id="btnFalKey" title="設定 fal.ai API 金鑰"><svg class="ic"><use href="#i-key"/></svg>
+    <span class="keydot" id="keyDot"></span>API 金鑰</button>
+  <button class="btn" id="btnHelp" title="快捷鍵"><svg class="ic"><use href="#i-keyboard"/></svg>快捷鍵</button>
+  <button class="btn" id="btnJobs"><svg class="ic"><use href="#i-list"/></svg>工作 <span class="badge" id="jobBadge">0</span></button>
+</header>
+
+<nav class="projtabs" id="projTabs"></nav>
+
+<div class="shell">
+  <nav class="rail">
+    <button class="step" data-view="character"><i>1</i>角色生成</button>
+    <button class="step" data-view="poses"><i>2</i>姿勢修改</button>
+    <button class="step" data-view="anim"><i>3</i>動畫生成</button>
+    <button class="step" data-view="export"><i>4</i>輸出</button>
+    <div class="rail-gap"></div>
+    <button class="step" data-view="library"><i><svg class="ic"><use href="#i-layers"/></svg></i>素材</button>
+    <button class="step" data-view="settings"><i><svg class="ic"><use href="#i-gear"/></svg></i>設定</button>
+  </nav>
+
+  <main id="main">
+
+    <!-- ============ 1. 角色生成 ============ -->
+    <section class="view" data-view="character">
+      <div class="cols c2">
+        <div class="col">
+
+          <div class="panel">
+            <div class="ph">用 AI 生成角色立繪<span class="grow"></span>
+              <span class="note" id="charGenHint">立繪只能從這裡生——生完點候選圖設為專案立繪</span></div>
+            <div class="pb">
+              <input type="file" id="styleFile" accept="image/*" hidden multiple>
+              <div class="slots">
+                <div class="slot" id="slotStyle">
+                  <div class="slot-h">風格參考<span class="grow"></span>
+                    <span class="mono dim" id="styleCount"></span></div>
+                  <div class="slot-img" id="styleSlotImg"><span class="ph-hint">拖風格圖進來</span></div>
+                  <div class="slot-f">可拖多張；模型會照這個畫風畫，不是照這個角色</div>
+                </div>
+              </div>
+              <div class="ref-grid" id="styleGrid"></div>
+              <p class="note">留空＝純文字生成。放圖＝把畫風（線條、上色、色調）套到你描述的角色上。</p>
+            </div>
+
+            <div class="ph">提示詞（組合式）<span class="grow"></span>
+              <span class="note">選好四段自動組成下面那句</span></div>
+            <div class="pb">
+              <label class="f block">角色描述（填進提示詞的 <code>{C}</code>，離開欄位自動存）
+                <textarea id="charDesc" rows="3" placeholder="a knight in dented steel plate armour, short red hair, carrying a round wooden shield"></textarea></label>
+              <div class="row">
+                <label class="f grow">風格 <select id="partStyle"></select></label>
+                <label class="f grow">角度 <select id="partAngle"></select></label>
+              </div>
+              <div class="row">
+                <label class="f" id="partFacingWrap">面向 <select id="partFacing"></select></label>
+                <label class="f grow">姿勢 <select id="partPose"></select></label>
+                <button class="btn xs" id="btnAddPose" title="新增自訂姿勢"><svg class="ic"><use href="#i-plus"/></svg>姿勢</button>
+                <button class="btn xs" id="btnDelPose" title="刪除選中的自訂姿勢"><svg class="ic"><use href="#i-trash"/></svg>刪除</button>
+              </div>
+              <label class="f block">額外描述（可留空，會接在姿勢那句後面）
+                <input id="charExtra" placeholder="例如：holding a round wooden shield, a small halo above the head"></label>
+              <div class="row">
+                <label class="f">張數 <input type="number" id="charN" class="w60" value="4" min="1" max="8"></label>
+                <span class="note grow" id="composeState"></span>
+                <button class="btn xs" id="btnRecompose"><svg class="ic"><use href="#i-refresh"/></svg>重新組合</button>
+              </div>
+              <textarea id="charPrompt" rows="6"></textarea>
+              <label class="f block mt">負面提示詞 <span class="dim" id="charNegHint"></span>
+                <textarea id="charNegPrompt" rows="2"></textarea></label>
+              <div class="tip-box" id="charTip"></div>
+              <div class="row">
+                <label class="f">模型 <select id="charModel" class="w200"></select></label>
+                <label class="f">種子 <input type="number" id="charSeed" class="w110" placeholder="留空隨機"></label>
+                <label class="f" id="charAspectWrap">比例
+                  <select id="charAspect" class="w86"></select></label>
+              </div>
+              <div class="row">
+                <span class="note" id="charModelNote"></span>
+                <span class="grow"></span>
+                <span class="cost" id="charCost"></span>
+                <button class="btn primary" id="btnCharGen"><svg class="ic"><use href="#i-wand"/></svg>生成立繪</button>
+              </div>
+            </div>
+
+            <div class="ph">候選<span class="grow"></span>
+              <button class="btn xs" id="btnRevealCharCand"><svg class="ic"><use href="#i-folder"/></svg>資料夾</button>
+              <select id="charHistory" class="w180"></select></div>
+            <div class="pb">
+              <div class="cand-grid" id="charCandGrid"></div>
+              <p class="note">點一張＝設為這個專案的角色立繪（會自動轉綠幕），接著去「姿勢修改」。</p>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="col">
+
+          <div class="panel">
+            <div class="ph">結果預覽<span class="grow"></span>
+              <span class="note">左邊點選候選圖才會換這裡</span></div>
+            <div class="pb">
+              <div class="empty" id="srcEmpty">還沒有選定的立繪——在左邊生成候選後點一張。</div>
+              <div class="pair" id="srcPreview" hidden>
+                <figure><img id="srcImg" alt=""><figcaption>原圖</figcaption></figure>
+                <figure><img id="srcGreen" alt=""><figcaption>綠幕版（送進模型）</figcaption></figure>
+              </div>
+              <div class="row" id="srcTools" hidden>
+                <label class="f">去背容差 <input type="number" id="greenTol" value="26" min="4" max="90"></label>
+                <button class="btn" id="btnRegreen"><svg class="ic"><use href="#i-refresh"/></svg>重新轉綠幕</button>
+                <button class="btn" id="btnRevealSrc"><svg class="ic"><use href="#i-folder"/></svg>開啟原圖位置</button>
+                <span class="note" id="greenInfo"></span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 2. 姿勢 ============ -->
+    <section class="view" data-view="poses">
+      <div class="cols c2">
+        <div class="panel">
+          <div class="ph tabs">
+            <button class="tab on" data-mode="full">整張重繪</button>
+            <button class="tab" data-mode="mask">局部替換</button>
+          </div>
+
+          <div class="mode-mask" hidden>
+            <div class="ph">底圖與遮罩<span class="grow"></span>
+              <select id="maskBase" class="w200"></select>
+              <button class="btn xs" id="btnMaskClear"><svg class="ic"><use href="#i-eraser"/></svg>清除</button>
+              <button class="btn xs" id="btnMaskInvert"><svg class="ic"><use href="#i-invert"/></svg>反轉</button></div>
+            <div class="pb">
+              <div class="mask-stage" id="maskStage">
+                <canvas id="maskImg"></canvas>
+                <canvas id="maskPaint"></canvas>
+              </div>
+              <div class="row">
+                <label class="f">筆刷 <input type="range" id="brushSize" min="4" max="160" value="48" class="w120"></label>
+                <span class="mono dim" id="brushVal">48</span>
+                <label class="f"><input type="radio" name="brushMode" value="paint" checked>塗抹</label>
+                <label class="f"><input type="radio" name="brushMode" value="erase">擦除</label>
+                <span class="grow"></span>
+                <span class="note" id="maskInfo"></span>
+              </div>
+              <p class="note">塗到的區域會被重畫，其餘像素原封不動。適合換武器、改表情、修頭飾。</p>
+            </div>
+          </div>
+
+          <div class="mode-full">
+          <div class="ph">原圖 ＋ 姿勢參考<span class="grow"></span>
+            <button class="btn xs" id="btnRefUpload"><svg class="ic"><use href="#i-upload"/></svg>選檔加入參考</button>
+            <button class="btn xs" id="btnRefClear"><svg class="ic"><use href="#i-eraser"/></svg>清除參考</button></div>
+          <div class="pb">
+            <input type="file" id="refFile" accept="image/*" hidden multiple>
+            <div class="slots">
+              <div class="slot" id="slotChar">
+                <div class="slot-h">角色原圖<span class="grow"></span>
+                  <select id="charBase" class="w120"></select></div>
+                <div class="slot-img" id="charSlotImg"><span class="ph-hint">還沒有角色圖</span></div>
+                <div class="slot-f">來源固定是「角色生成」選定的立繪，右上可切底圖</div>
+              </div>
+              <div class="slot-plus">＋</div>
+              <div class="slot" id="slotRef">
+                <div class="slot-h">姿勢參考<span class="grow"></span>
+                  <span class="mono dim" id="refCount"></span></div>
+                <div class="slot-img" id="refSlotImg"><span class="ph-hint">拖姿勢圖進來</span></div>
+                <div class="slot-f">可拖多張，下方也能點選</div>
+              </div>
+            </div>
+            <div class="ref-grid" id="refGrid"></div>
+            <p class="note">生成時第一張送角色原圖、之後依序送勾選的參考姿勢；
+              本機 workflow 用 <code>%image2%</code> 取得第一張參考。</p>
+          </div>
+          </div>
+
+          <div class="ph">提示詞</div>
+          <div class="pb">
+            <div class="row">
+              <label class="f">預設 <select id="posePreset"></select></label>
+              <label class="f">存成姿勢名 <input id="poseKey" class="w140" placeholder="stand"></label>
+            </div>
+            <textarea id="posePrompt" rows="6"></textarea>
+            <label class="f block">負面提示詞 <span class="dim" id="poseNegHint"></span>
+              <textarea id="poseNeg" rows="2" placeholder="blurry, extra limbs, text, watermark"></textarea></label>
+          </div>
+
+          <div class="ph">生成參數</div>
+          <div class="pb">
+            <div class="row">
+              <label class="f">模型 <select id="poseModel"></select></label>
+              <label class="f">張數 <input type="number" id="poseN" class="w60" value="5" min="1" max="8"></label>
+              <label class="f">種子 <input type="number" id="poseSeed" class="w110" placeholder="留空隨機"></label>
+              <label class="f">比例
+                <select id="poseAspect">
+                  <option value="1:1">1:1</option><option value="3:4">3:4</option>
+                  <option value="4:3">4:3</option><option value="9:16">9:16</option>
+                  <option value="auto">跟隨原圖</option>
+                </select></label>
+            </div>
+            <div class="row local-only" id="poseLocalRow" hidden>
+              <label class="f">模型檔 <select id="poseLocalModel" class="w180"></select></label>
+              <label class="f">Workflow <select id="poseLocalWf" class="w160"></select></label>
+              <label class="f">VAE <select id="poseLocalVae" class="w150"></select></label>
+              <label class="f">步數 <input type="number" id="poseSteps" class="w70" value="28"></label>
+              <label class="f">CFG <input type="number" id="poseCfg" class="w70" value="6.5" step="0.5"></label>
+              <label class="f">重繪強度 <input type="number" id="poseDenoise" class="w70" value="0.62" step="0.02" min="0" max="1"></label>
+              <label class="f">參考疊合 <input type="number" id="poseBlend" class="w70" value="0.4" step="0.05" min="0" max="1"></label>
+              <label class="f">尺寸 <input type="number" id="poseW" class="w80" value="1024"> × <input type="number" id="poseH" class="w80" value="1024"></label>
+            </div>
+            <div class="row">
+              <span class="note" id="poseModelNote"></span>
+              <span class="grow"></span>
+              <span class="cost" id="poseCost"></span>
+              <button class="btn primary" id="btnPoseGen"><svg class="ic"><use href="#i-wand"/></svg>生成候選</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="ph">候選<span class="grow"></span>
+            <button class="btn xs" id="btnRevealCand"><svg class="ic"><use href="#i-folder"/></svg>資料夾</button>
+            <select id="candHistory" class="w180"></select></div>
+          <div class="pb">
+            <div class="cand-grid" id="candGrid"></div>
+          </div>
+          <div class="ph">本專案姿勢圖<span class="grow"></span>
+            <button class="btn xs" id="btnRevealPoses"><svg class="ic"><use href="#i-folder"/></svg>資料夾</button>
+            <button class="btn xs" id="btnPoseUpload"><svg class="ic"><use href="#i-upload"/></svg>直接上傳</button></div>
+          <div class="pb">
+            <input type="file" id="poseUploadFile" accept="image/*" hidden>
+            <div class="pose-grid" id="poseGrid"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3. 動作 ============ -->
+    <section class="view" data-view="anim">
+      <div class="anim-layout">
+        <aside class="panel clip-list">
+          <div class="ph">動作<span class="grow"></span>
+            <button class="btn xs" id="btnScaffold2" title="依既有遊戲的動作清單補齊"><svg class="ic"><use href="#i-check"/></svg>補齊</button>
+            <button class="btn xs" id="btnAddClip"><svg class="ic"><use href="#i-plus"/></svg>新增</button></div>
+          <div class="pb tight">
+            <div id="clipList"></div>
+            <div class="add-box" id="presetAdd" hidden>
+              <select id="presetSelect"></select>
+              <input id="newClipName" placeholder="動作名（英文）">
+              <div class="row">
+                <button class="btn primary xs" id="btnCreateClip"><svg class="ic"><use href="#i-check"/></svg>建立</button>
+                <button class="btn xs" id="btnCancelClip">取消</button>
+                <button class="btn xs danger" id="btnDelClip"><svg class="ic"><use href="#i-trash"/></svg>刪除目前</button>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <div class="stage-wrap">
+          <div class="panel stage">
+            <div class="toolbar">
+              <b id="stageTitle">—</b>
+              <span class="grow"></span>
+              <button class="btn xs" id="btnPlay"><svg class="ic"><use href="#i-pause"/></svg>暫停</button>
+              <label class="f">FPS <input type="number" id="fpsInput" class="w56" value="12" min="1" max="60"></label>
+              <label class="f"><input type="checkbox" id="loopInput" checked>循環</label>
+              <label class="f"><input type="checkbox" id="alignInput">逐幀腳底對齊</label>
+              <label class="f">縮放 <input type="number" id="scaleInput" class="w60" value="1" step="0.02" min="0.4" max="1.6"></label>
+              <span class="vsep"></span>
+              <label class="f"><input type="checkbox" id="onionInput">洋蔥皮</label>
+              <label class="f"><input type="checkbox" id="refInput">參考疊圖</label>
+              <label class="f"><input type="checkbox" id="flipInput">水平翻轉</label>
+              <label class="f"><input type="checkbox" id="guideInput">地面線</label>
+              <select id="bgSelect" class="w86">
+                <option value="checker">棋盤格</option>
+                <option value="dark">深灰</option>
+                <option value="light">淺灰</option>
+                <option value="magenta">洋紅</option>
+              </select>
+              <select id="zoomSelect" class="w72">
+                <option value="0">自動</option>
+                <option value="1">1×</option><option value="2">2×</option>
+                <option value="3">3×</option><option value="4">4×</option>
+              </select>
+            </div>
+            <div class="canvas-wrap" id="canvasWrap">
+              <canvas id="playCanvas"></canvas>
+              <div class="stage-empty" id="stageEmpty">選一個動作，生成或匯入影片後在這裡挑幀。</div>
+            </div>
+            <div class="statusbar">
+              <span id="playInfo" class="mono"></span>
+              <span class="grow"></span>
+              <span id="takeInfo" class="mono dim"></span>
+            </div>
+          </div>
+
+          <div class="panel filmstrip">
+            <div class="toolbar">
+              <span class="lbl">幀選擇</span>
+              <label class="f">起 <input type="number" id="rngStart" class="w64" value="0" min="0"></label>
+              <label class="f">迄 <input type="number" id="rngEnd" class="w64" value="0" min="0"></label>
+              <label class="f">步 <input type="number" id="rngStep" class="w52" value="2" min="1"></label>
+              <button class="btn xs" id="btnRange"><svg class="ic"><use href="#i-check"/></svg>套用區間</button>
+              <span class="vsep"></span>
+              <button class="btn xs" id="btnLoopDetect"><svg class="ic"><use href="#i-repeat"/></svg>循環偵測</button>
+              <button class="btn xs" id="btnSegments"><svg class="ic"><use href="#i-scissors"/></svg>跳躍分段</button>
+              <button class="btn xs primary" id="btnSaveSeg" title="把現在框選的幀另存成另一個動作（共用同一支影片）"><svg class="ic"><use href="#i-save"/></svg>另存為動作</button>
+              <button class="btn xs" id="btnInvert"><svg class="ic"><use href="#i-invert"/></svg>反選</button>
+              <button class="btn xs" id="btnClearSel"><svg class="ic"><use href="#i-eraser"/></svg>清除</button>
+              <span class="grow"></span>
+              <label class="f">縮圖 <input type="range" id="thumbSize" min="46" max="130" value="78" class="w90"></label>
+            </div>
+            <div class="strip" id="strip"></div>
+            <div class="strip-hint" id="stripHint"></div>
+          </div>
+        </div>
+
+        <aside class="panel inspector">
+          <div class="ph">生成</div>
+          <div class="pb">
+            <label class="f block">姿勢源圖<select id="clipPose"></select></label>
+            <input type="file" id="clipPoseFile" accept="image/*" hidden>
+            <div class="row">
+              <button class="btn xs" id="btnClipPoseUpload" title="用外部圖片當這個動作的姿勢源圖"><svg class="ic"><use href="#i-upload"/></svg>上傳外部圖片</button>
+              <span class="note grow">外面畫好／別的工具生的圖都可以，非綠幕會自動轉綠幕</span>
+            </div>
+            <div class="pose-thumb" id="clipPoseThumb"></div>
+            <label class="f block">模型<select id="clipModel"></select></label>
+            <div class="row">
+              <label class="f">長度秒 <select id="clipDuration" class="w70"></select></label>
+              <label class="f">解析度 <select id="clipRes" class="w80">
+                <option value="720p">720p</option><option value="480p">480p</option><option value="1080p">1080p</option>
+              </select></label>
+              <label class="f">比例 <select id="clipAspect" class="w70">
+                <option value="1:1">1:1</option><option value="auto">原圖</option>
+                <option value="3:4">3:4</option><option value="9:16">9:16</option>
+              </select></label>
+            </div>
+            <div class="row">
+              <label class="f">種子 <input type="number" id="clipSeed" class="w110" placeholder="留空隨機"></label>
+              <label class="f">CFG <input type="number" id="clipCfg" class="w64" value="0.5" step="0.05" min="0" max="1"></label>
+              <label class="f"><input type="checkbox" id="clipCamFixed" checked>鎖鏡頭</label>
+            </div>
+            <div class="row local-only" id="clipLocalRow" hidden>
+              <label class="f">Workflow <select id="clipLocalWf" class="w150"></select></label>
+              <label class="f">幀數 <input type="number" id="clipFrames" class="w70" value="81"></label>
+              <label class="f">生成 fps <input type="number" id="clipGenFps" class="w70" value="16"></label>
+              <label class="f">步數 <input type="number" id="clipSteps" class="w64" value="20"></label>
+              <label class="f">尺寸 <input type="number" id="clipW" class="w74" value="720"> × <input type="number" id="clipH" class="w74" value="720"></label>
+            </div>
+            <label class="f block">提示詞<textarea id="clipPrompt" rows="7"></textarea></label>
+            <label class="f block" id="negWrap">負面提示詞<textarea id="clipNeg" rows="3"></textarea></label>
+            <div class="norm-box" id="clipNorm" hidden></div>
+            <div class="tip-box" id="clipTip"></div>
+            <div class="row">
+              <span class="cost" id="clipCost"></span>
+              <span class="grow"></span>
+              <input type="file" id="clipImport" accept="video/*" hidden>
+              <button class="btn" id="btnImportVideo"><svg class="ic"><use href="#i-upload"/></svg>匯入影片</button>
+              <button class="btn primary" id="btnGenVideo"><svg class="ic"><use href="#i-wand"/></svg>生成影片</button>
+            </div>
+          </div>
+
+          <div class="ph">去背（這個 take）</div>
+          <div class="pb">
+            <div class="row">
+              <label class="f">綠色下限 <input type="number" id="keyHueLo" class="w62" value="35"></label>
+              <label class="f">上限 <input type="number" id="keyHueHi" class="w62" value="90"></label>
+              <label class="f">綠優勢 <input type="number" id="keyDom" class="w62" value="25"></label>
+              <label class="f">飽和 <input type="number" id="keySat" class="w62" value="60"></label>
+              <label class="f">亮度 <input type="number" id="keyVal" class="w62" value="40"></label>
+              <button class="btn xs" id="btnReextract"><svg class="ic"><use href="#i-refresh"/></svg>重新抽幀</button>
+            </div>
+            <p class="note">角色身上有接近綠幕的顏色被吃掉時，把「綠色下限」調高到 55–58。</p>
+          </div>
+
+          <div class="ph">打包（這個動作）</div>
+          <div class="pb">
+            <div class="row">
+              <label class="f">站位對齊 <select id="clipXalign" class="w96">
+                <option value="median">中位數</option><option value="first">首幀</option>
+              </select></label>
+              <label class="f"><input type="checkbox" id="clipDespeckle">去雜點</label>
+              <label class="f"><input type="checkbox" id="clipClearWarm">清火光</label>
+            </div>
+          </div>
+
+          <div class="ph">紀錄<span class="grow"></span>
+            <button class="btn xs" id="btnRevealFrames" title="開啟這個 take 的幀資料夾"><svg class="ic"><use href="#i-folder"/></svg>幀資料夾</button>
+            <span class="dim mono" id="takeCount"></span></div>
+          <div class="pb"><div id="takeList" class="take-list"></div></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============ 4. 輸出 ============ -->
+    <section class="view" data-view="export">
+      <div class="cols c2">
+        <div class="panel">
+          <div class="ph">要打包的動作<span class="grow"></span>
+            <button class="btn xs" id="btnPackAll">全選</button>
+            <button class="btn xs" id="btnPackNone">全不選</button></div>
+          <div class="pb"><div id="packList" class="pack-list"></div></div>
+          <div class="ph">參數</div>
+          <div class="pb">
+            <div class="row">
+              <label class="f">單幀寬 <input type="number" id="packW" class="w80" value="240" min="32" max="512"></label>
+              <label class="f">留白 <input type="number" id="packPad" class="w66" value="6" min="0" max="40"></label>
+              <label class="f">邊緣壓暗 <input type="number" id="packDark" class="w70" value="0.32" step="0.02" min="0" max="1"></label>
+              <label class="f">黑描邊 <input type="number" id="packOutline" class="w62" value="0" min="0" max="4"></label>
+            </div>
+            <div class="row">
+              <button class="btn primary" id="btnPack"><svg class="ic"><use href="#i-package"/></svg>打包</button>
+              <a class="btn" id="btnDownload" href="#" download><svg class="ic"><use href="#i-download"/></svg>下載 zip</a>
+              <span class="grow"></span>
+              <input id="exportDir" placeholder="複製到資料夾…">
+              <button class="btn" id="btnExportDir"><svg class="ic"><use href="#i-copy"/></svg>複製</button>
+              <button class="btn" id="btnRevealOut"><svg class="ic"><use href="#i-folder"/></svg>開啟輸出資料夾</button>
+            </div>
+            <p class="note">所有動作共用一個裁切框與腳底基準線，遊戲內切換狀態不會位移。</p>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="ph">預覽播放<span class="grow"></span>
+            <select id="pvClip" class="w120"></select>
+            <label class="f">FPS <input type="number" id="pvFps" class="w56" value="12" min="1" max="60"></label>
+            <label class="f"><input type="checkbox" id="pvLoop" checked>循環</label>
+            <label class="f"><input type="checkbox" id="pvFlip">翻轉</label>
+            <select id="pvZoom" class="w70">
+              <option value="1">1×</option><option value="2" selected>2×</option>
+              <option value="3">3×</option><option value="4">4×</option>
+            </select>
+            <select id="pvBg" class="w86">
+              <option value="checker">棋盤格</option><option value="dark">深灰</option>
+              <option value="light">淺灰</option><option value="magenta">洋紅</option>
+            </select>
+            <button class="btn xs" id="pvPlay"><svg class="ic"><use href="#i-pause"/></svg>暫停</button></div>
+          <div class="pb">
+            <div class="pv-stage"><canvas id="pvCanvas"></canvas></div>
+            <div class="statusbar"><span id="pvInfo" class="mono"></span>
+              <span class="grow"></span>
+              <span class="mono dim">播的是打包後的 strip，就是遊戲裡會看到的樣子</span></div>
+          </div>
+          <div class="ph">產出檔案</div>
+          <div class="pb"><div id="packResult" class="pack-result"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 5. 素材庫 ============ -->
+    <section class="view" data-view="library">
+      <div class="panel">
+        <div class="ph">專案</div>
+        <div class="pb"><div class="lib-grid" id="libGrid"></div></div>
+      </div>
+      <div class="panel mt">
+        <div class="ph">本專案的所有影片</div>
+        <div class="pb"><div class="lib-takes" id="libTakes"></div></div>
+      </div>
+    </section>
+
+    <!-- ============ 6. 設定 ============ -->
+    <section class="view" data-view="settings">
+      <div class="cols c2">
+        <div class="panel">
+          <div class="ph">fal.ai 雲端</div>
+          <div class="pb">
+            <div class="row">
+              <label class="f block grow">API 金鑰
+                <input id="falKey" type="password" placeholder="貼上 fal.ai 金鑰（id:secret）"></label>
+              <button class="btn" id="btnFalTest">測試</button>
+              <button class="btn primary" id="btnFalSave"><svg class="ic"><use href="#i-save"/></svg>儲存金鑰</button>
+              <button class="btn" id="btnFalClear" title="清掉後改用環境變數 FAL_KEY／舊的 secrets.json"><svg class="ic"><use href="#i-trash"/></svg>清除</button>
+            </div>
+            <div class="ping" id="falPing"></div>
+            <div class="row">
+              <label class="f"><input type="checkbox" id="falCatalog" checked>模型選單顯示 fal.ai 線上清單</label>
+              <button class="btn xs" id="btnFalReload"><svg class="ic"><use href="#i-refresh"/></svg>重抓模型清單</button>
+              <span class="note" id="falCatalogInfo"></span>
+            </div>
+            <p class="note">清單直接跟 fal.ai 要（<code>image-to-video</code> / <code>image-to-image</code> /
+              <code>text-to-image</code>），每個模型的參數欄位也是讀它的 OpenAPI schema 決定的，
+              所以新上架的模型不用改程式就能用。快取 12 小時。</p>
+          </div>
+
+          <div class="ph">本機服務</div>
+          <div class="pb">
+            <div class="row">
+              <label class="f block grow">ComfyUI 位址<input id="comfyUrl" placeholder="http://127.0.0.1:8188"></label>
+              <button class="btn" id="btnPingComfy">測試連線</button>
+            </div>
+            <div class="ping" id="comfyPing"></div>
+            <div class="row">
+              <label class="f block grow">A1111 / Forge 位址<input id="a1111Url" placeholder="http://127.0.0.1:7860"></label>
+              <button class="btn" id="btnPingA1111">測試連線</button>
+            </div>
+            <div class="ping" id="a1111Ping"></div>
+          </div>
+
+          <div class="ph">本機產圖</div>
+          <div class="pb">
+            <div class="row">
+              <label class="f">後端 <select id="locImgKind" class="w120">
+                <option value="comfyui">ComfyUI</option><option value="a1111">A1111 / Forge</option>
+              </select></label>
+              <label class="f">Workflow <select id="locImgWf" class="w190"></select></label>
+              <label class="f">模型檔 <select id="locImgModel" class="w200"></select></label>
+              <label class="f">VAE <select id="locImgVae" class="w170"></select></label>
+              <button class="btn xs" id="btnReloadModels"><svg class="ic"><use href="#i-refresh"/></svg>重讀模型</button>
+            </div>
+            <div class="row">
+              <label class="f">步數 <input type="number" id="locImgSteps" class="w70" value="28"></label>
+              <label class="f">CFG <input type="number" id="locImgCfg" class="w70" value="6.5" step="0.5"></label>
+              <label class="f">重繪強度 <input type="number" id="locImgDenoise" class="w70" value="0.62" step="0.02"></label>
+              <label class="f">尺寸 <input type="number" id="locImgW" class="w80" value="1024"> × <input type="number" id="locImgH" class="w80" value="1024"></label>
+              <label class="f">取樣器 <input id="locImgSampler" class="w120" value="DPM++ 2M"></label>
+            </div>
+          </div>
+
+          <div class="ph">本機產影片（ComfyUI）</div>
+          <div class="pb">
+            <div class="row">
+              <label class="f">Workflow <select id="locVidWf" class="w190"></select></label>
+              <label class="f">模型檔 <select id="locVidModel" class="w200"></select></label>
+            </div>
+            <div class="row">
+              <label class="f">幀數 <input type="number" id="locVidFrames" class="w70" value="81"></label>
+              <label class="f">fps <input type="number" id="locVidFps" class="w60" value="16"></label>
+              <label class="f">步數 <input type="number" id="locVidSteps" class="w64" value="20"></label>
+              <label class="f">CFG <input type="number" id="locVidCfg" class="w64" value="5" step="0.5"></label>
+              <label class="f">尺寸 <input type="number" id="locVidW" class="w74" value="720"> × <input type="number" id="locVidH" class="w74" value="720"></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="ph">Workflow 檔案<span class="grow"></span>
+            <input type="file" id="wfFile" accept=".json" hidden>
+            <button class="btn xs" id="btnWfUpload"><svg class="ic"><use href="#i-upload"/></svg>匯入 JSON</button>
+            <button class="btn xs" id="btnWfPaste"><svg class="ic"><use href="#i-copy"/></svg>貼上</button>
+            <button class="btn xs" id="btnRevealWf"><svg class="ic"><use href="#i-folder"/></svg>資料夾</button></div>
+          <div class="pb">
+            <div id="wfList" class="wf-list"></div>
+            <p class="note">在 ComfyUI 用「Workflow → Export (API)」匯出，然後把要由這裡控制的欄位改成佔位符：</p>
+            <div class="tokens">
+              <code>%prompt%</code><code>%negative%</code><code>%image%</code><code>%image2%</code>
+              <code>%seed%</code><code>%steps%</code><code>%cfg%</code><code>%denoise%</code>
+              <code>%width%</code><code>%height%</code><code>%frames%</code><code>%fps%</code><code>%model%</code>
+            </div>
+            <p class="note">整格就是佔位符時會保留數字型別（seed／steps）。影片 workflow 需要能輸出影片的節點
+              （VHS_VideoCombine、SaveWEBM、SaveAnimatedWEBP…）。</p>
+          </div>
+
+          <div class="ph">抽幀預設</div>
+          <div class="pb">
+            <div class="row">
+              <label class="f">預覽寬度 <input type="number" id="setPreviewW" class="w80" value="320"></label>
+              <label class="f">綠色下限 <input type="number" id="setHueLo" class="w62" value="35"></label>
+              <label class="f">上限 <input type="number" id="setHueHi" class="w62" value="90"></label>
+              <label class="f">綠優勢 <input type="number" id="setDom" class="w62" value="25"></label>
+              <label class="f">飽和 <input type="number" id="setSat" class="w62" value="60"></label>
+              <label class="f">亮度 <input type="number" id="setVal" class="w62" value="40"></label>
+            </div>
+          </div>
+
+          <div class="ph">預設值</div>
+          <div class="pb">
+            <div class="row">
+              <label class="f">圖片模型 <select id="setImgModel" class="w180"></select></label>
+              <label class="f">影片模型 <select id="setVidModel" class="w180"></select></label>
+              <label class="f">候選張數 <input type="number" id="setPoseN" class="w60" value="5"></label>
+              <label class="f">單幀寬 <input type="number" id="setFrameW" class="w70" value="240"></label>
+            </div>
+            <div class="row">
+              <button class="btn primary" id="btnSaveSettings"><svg class="ic"><use href="#i-save"/></svg>儲存設定</button>
+              <span class="note" id="settingsPath"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="jobs-panel panel" id="jobsPanel" hidden>
+  <div class="ph">工作<span class="grow"></span><button class="btn xs" id="btnCloseJobs">關閉</button></div>
+  <div class="pb"><div id="jobsList"></div></div>
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-box panel">
+    <div class="ph" id="modalTitle">—</div>
+    <div class="pb" id="modalBody"></div>
+    <div class="pb row end">
+      <button class="btn" id="modalCancel">取消</button>
+      <button class="btn primary" id="modalOk">確定</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

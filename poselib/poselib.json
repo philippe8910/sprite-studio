@@ -1,0 +1,18 @@
+{
+ "stand.png": {
+  "label": "站立待機",
+  "pose": "stand"
+ },
+ "aim.png": {
+  "label": "站立瞄準",
+  "pose": "aim"
+ },
+ "crouch.png": {
+  "label": "蹲下待機",
+  "pose": "crouch"
+ },
+ "crouch_aim.png": {
+  "label": "蹲下瞄準",
+  "pose": "crouch_aim"
+ }
+}
