@@ -1752,7 +1752,7 @@ function renderStrip() {
     const h = fmax > fmin ? (1 - (s.feet - fmin) / (fmax - fmin)) : 0;
     return `<div class="fr ${sel.has(i) ? 'on' : ''}" data-i="${i}" style="width:${w}px">
       <span class="n">${i}</span><img loading="lazy" src="${frameUrl(t, i)}">
-      ${s.warm > 40 ? '<span class="flag" title="偵測到暖色，可能是槍口火光"></span>' : ''}
+      ${s.warm > 40 ? '<span class="flag" title="偵測到亮暖色，可能是模型多加的火光特效"></span>' : ''}
       <i class="bar" style="width:${(h * 100).toFixed(0)}%"></i></div>`;
   }).join('');
   bindStripSelection();

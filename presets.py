@@ -64,7 +64,7 @@ GREEN_TAIL = ("Camera fixed, no zoom, plain solid green screen background stays 
 
 NEG_COMMON = ("turning around, rotating body, facing the camera, front view, 3/4 view, "
               "camera movement, zoom, pan, background change, particle effects, "
-              "muzzle flash, smoke, sparks")
+              "flashes, smoke, sparks")
 
 # ---------------------------------------------------------------- 角色生成的共用句型
 # 立繪一律從這裡生（不再支援上傳外部圖）。有勾「風格參考」時參考圖會一起送進模型，

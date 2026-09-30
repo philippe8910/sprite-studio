@@ -7,19 +7,19 @@
 並附上失敗類型，方便只重做壞掉的那一支動作（而不是整套重生成）。
 
   empty      空白幀：不透明像素佔比 < 0.5%
-  dup        （警告，不算失敗）連續重複幀：相鄰幀平均差 < 0.6。射擊類動作常刻意停格，需人工確認
+  dup        （警告，不算失敗）連續重複幀：相鄰幀平均差 < 0.6。攻擊類動作常刻意停格，需人工確認
   seam_jump  循環接縫跳動：尾幀→首幀差 > 中位步距 × 2.5（循環會「閃一下」）。
-             只檢查連續循環的動作（待機、跑、走、蹲姿待機）；射擊類每發重播，接縫本來就是開火瞬間
+             只檢查連續循環的動作（待機、走、跑、蹲姿待機等）；攻擊類一次一段重播，接縫本來就是出招瞬間
   seam_stall 循環接縫停頓：尾幀→首幀差 < 中位步距 × 0.25（尾幀≈首幀，每圈會卡一格）
-  feet       腳底漂移：原地動作（待機、原地射擊、蹲姿）的最低不透明列逐幀極差 > 8 px；跑步類腳本來就會離地，不檢查
+  feet       腳底漂移：原地動作（待機、蹲姿、防禦）的最低不透明列逐幀極差 > 8 px；走跑跳類腳本來就會離地，不檢查
   clip       被畫框切到：不透明像素貼齊左右邊緣 ≥ 6 px（素材被裁掉；下緣是地面基準線，不檢查）
 """
 import argparse, json, os, statistics, sys
 import numpy as np
 from PIL import Image
 
-SEAMLESS = ('idle', 'run', 'walk', 'crouch_idle', 'run_shoot', 'guard')
-GROUND = ('idle', 'shoot', 'crouch', 'crouch_idle', 'crouch_shoot', 'aim', 'guard')
+SEAMLESS = ('idle', 'walk', 'run', 'crouch_idle', 'guard', 'fly', 'swim')
+GROUND = ('idle', 'crouch', 'crouch_idle', 'guard')
 
 def frames_of(path, fw, fh, count):
     im = np.asarray(Image.open(path).convert('RGBA'), dtype=np.float32)

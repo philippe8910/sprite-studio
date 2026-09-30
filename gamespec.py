@@ -16,10 +16,6 @@ GAME_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__
 GAME_HTML = "miyako.html"
 SKIN_PREFIX = "assets_miyako"
 
-# 射擊專屬的動作（彈殼／槍口）已經不是這個工具的預設了——這裡只保留一份名單，
-# 用來把上線遊戲掃到的舊動作濾掉，不讓它們出現在「未建立」清單裡。
-LEGACY_GUN_KEYS = ("shoot", "crouch_shoot", "run_shoot")
-
 # 通用遊戲動作組：沒有 game/ 可讀時的建議清單，也決定清單排序
 COMMON_ORDER = ["idle", "walk", "run", "attack", "jump", "jump_full", "hurt",
                 "crouch_idle", "crouch_attack", "rise", "fall", "land", "roll", "death"]
@@ -112,22 +108,19 @@ def load_spec(force=False):
                 "feetRatio": meta.get("_feetRatio"), "anchorX": meta.get("_anchorX"),
                 "anims": {k: {kk: v[kk] for kk in ("count", "fps", "loop", "frameH")}
                           for k, v in anims.items()},
-                "muzzle": {k[8:]: v for k, v in meta.items() if k.startswith("_muzzle_")},
                 "bodyPx": body,
                 "visualH": round(body * draw_h / fh, 1) if body and fh else None,
                 "in_game": name in by_dir,
             })
 
-    # 必要動作＝所有上線角色都有的動作（射擊類是舊遊戲專屬的，這裡濾掉）
+    # 必要動作＝所有上線角色都有的動作
     required = [k for k, s in anim_stats.items()
-                if s["n"] == len([x for x in skins if x["anims"]]) and k not in LEGACY_GUN_KEYS]
+                if s["n"] == len([x for x in skins if x["anims"]])]
     order = COMMON_ORDER
     required.sort(key=lambda k: order.index(k) if k in order else 99)
 
     norms = {}
     for k, s in anim_stats.items():
-        if k in LEGACY_GUN_KEYS:
-            continue
         fps = sorted(set(x for x in s["fps"] if x))
         cnt = [x for x in s["count"] if x]
         norms[k] = {
@@ -165,9 +158,6 @@ def load_spec(force=False):
         "anchor_range": [round(min(anch), 4), round(max(anch), 4)] if anch else [0.33, 0.44],
         "visual_h": round(vis_target, 1),
         "visual_h_all": {s["id"]: s["visualH"] for s in skins if s.get("visualH")},
-        # 打包時要量槍口座標的動作。通用工具預設沒有；只有專案裡真的還留著舊的射擊
-        # 動作時才會有東西，避免舊角色重打包後遊戲端的槍口資料掉了。
-        "muzzle_keys": [k for k in LEGACY_GUN_KEYS if k in anim_stats],
         "skins": skins,
     }
     _CACHE["spec"] = spec

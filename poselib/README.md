@@ -6,8 +6,8 @@
 
 ```json
 {
-  "stand.png": { "label": "站立待機", "pose": "stand" },
-  "aim.png":   { "label": "站立瞄準", "pose": "aim" }
+  "stand.png":  { "label": "站立待機", "pose": "stand" },
+  "crouch.png": { "label": "蹲下待機", "pose": "crouch" }
 }
 ```
 

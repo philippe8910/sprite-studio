@@ -787,7 +787,7 @@ def api_pose_gen(pid):
         abort(400, "prompt is empty")
 
     # 第一張是角色原圖（模型照抄它的設計），後面接參考姿勢圖。
-    # base 可以指定成別張（例如拿已完成的 aim 當底再改成 crouch_aim）。
+    # base 可以指定成別張（例如拿已完成的 crouch 當底再改成 crouch_attack）。
     src = body.get("base") or p.get("source", {}).get("green") or p.get("source", {}).get("file")
     if not src:
         abort(400, "請先在「角色生成」上傳或生成立繪")
@@ -1367,20 +1367,7 @@ def api_pack(pid):
                              outline_dark=float(packcfg.get("outline_dark", 0.32)),
                              outline_px=int(packcfg.get("outline_px", 0)),
                              progress=prog)
-        # 舊角色如果還留著射擊動作才需要量槍口；通用專案這裡是空的
-        muzzle_keys = gamespec.load_spec().get("muzzle_keys") or []
-        if muzzle_keys:
-            job["message"] = "量測槍口座標…"
         job["progress"] = 88
-        for name in muzzle_keys:
-            m = meta.get(name)
-            if not m:
-                continue
-            band = (0.40, 0.78) if name == "crouch_shoot" else (0.25, 0.60)
-            mz = pipeline.measure_muzzle(os.path.join(out_dir, m["file"]), m["count"],
-                                         m["frameW"], m["frameH"], band)
-            if mz:
-                meta[f"_muzzle_{name}"] = mz
         with open(os.path.join(out_dir, "anims.json"), "w", encoding="utf-8") as f:
             json.dump(meta, f, indent=1, ensure_ascii=False)
 

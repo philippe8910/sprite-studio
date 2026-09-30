@@ -140,7 +140,7 @@ def feet_of(bgra):
 
 
 def feet_cx(bgra, band=30):
-    """腳部帶（最底 band px）的水平中心＝身體站位，不被伸出的槍管偏置。"""
+    """腳部帶（最底 band px）的水平中心＝身體站位，不被伸出的手臂或道具偏置。"""
     a = bgra[:, :, 3]
     ys = np.where(a.max(axis=1) > 0)[0]
     if not len(ys):
@@ -243,7 +243,7 @@ def outline(bgra, dark=0.32, px=0):
 
 
 def clear_warm(bgra, y0f=0.25, y1f=0.60, thresh=(220, 180, 140)):
-    """清掉指定行帶內的亮暖色像素（模型偷加的槍口火光）。"""
+    """清掉指定行帶內的亮暖色像素（影片模型自己多加的火光、閃光等特效）。"""
     h = bgra.shape[0]
     y0, y1 = int(h * y0f), int(h * y1f)
     band = bgra[y0:y1]
@@ -503,26 +503,3 @@ def pack(clips, out_dir, frame_w=240, pad=6, outline_dark=0.32, outline_px=0,
     with open(os.path.join(out_dir, "anims.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=1, ensure_ascii=False)
     return meta
-
-
-def measure_muzzle(strip_path, count, frame_w, frame_h, band=(0.25, 0.60)):
-    """從打包後的 strip 實測槍口座標（比例值），給遊戲畫火光用。"""
-    strip = imread(strip_path)
-    if strip is None:
-        return None
-    fxs, fys = [], []
-    for i in range(count):
-        a = strip[:, i * frame_w:(i + 1) * frame_w, 3]
-        y0, y1 = int(frame_h * band[0]), int(frame_h * band[1])
-        sub = a[y0:y1]
-        cols = np.where(sub.max(axis=0) > 0)[0]
-        if not len(cols):
-            continue
-        xm = int(cols.max())
-        rows = np.where(sub[:, max(0, xm - 6):xm + 1].max(axis=1) > 0)[0]
-        fxs.append(xm)
-        fys.append(y0 + (rows.mean() if len(rows) else 0))
-    if not fxs:
-        return None
-    return {"fx": round((float(np.mean(fxs)) + 3) / frame_w, 4),
-            "fy": round(float(np.mean(fys)) / frame_h, 4)}
