@@ -1200,13 +1200,10 @@ def api_clip_generate(pid, clip):
             os.makedirs(os.path.dirname(vpath), exist_ok=True)
             falclient.download(url, vpath)
         except falclient.FalError as e:
-            if e.kind in ("failed", "rejected"):
-                release()              # 確定失敗或確定沒被收下：清掉佔位，之後可以重送
-            elif e.kind == "uncertain":
-                with LOCK:             # 結果不明：保留佔位並標記；已有 request id 的之後可接回
-                    proj = load_project(pid)
-                    repair.mark_unconfirmed(proj.get("pending_gen", {}), key, owner)
-                    save_project(proj)
+            with LOCK:                 # 已拿到 request id 的一律保留（可接回）；見 repair.on_error
+                proj = load_project(pid)
+                repair.on_error(proj.get("pending_gen", {}), key, owner, e.kind)
+                save_project(proj)
             raise
         out = finish_take(vpath, {"model": model_key, "cost": cost, "gen_key": key})
         release()     # 成功存成 take 才清掉

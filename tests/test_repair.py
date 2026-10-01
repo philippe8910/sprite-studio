@@ -100,3 +100,19 @@ def test_uncertain_submit_blocks_immediate_resubmit():
     repair.mark_unconfirmed(pending, "k", "job1")       # 送出時逾時：fal 可能已經收下
     assert repair.claim(pending, "k", 120, "job2")[0] == "blocked"
     assert repair.claim(pending, "k", 100 + repair.CLAIM_TTL + 1, "job2")[0] == "submit"
+
+
+def test_download_error_after_submit_keeps_claim_for_resume():
+    # 已拿到 request id（fal 已收下並計費），之後下載回 4xx：不能清掉，否則下次會重送再付一次
+    pending = {}
+    repair.claim(pending, "k", 100, "job1")
+    pending["k"].update(request_id="r1", owner="job1")
+    assert repair.on_error(pending, "k", "job1", "rejected") == "keep"
+    assert repair.claim(pending, "k", 200, "job2")[0] == "resume"
+
+
+def test_on_error_rules_before_request_id():
+    for kind, expect in (("rejected", "release"), ("uncertain", "unconfirmed"), ("failed", "release")):
+        pending = {}
+        repair.claim(pending, "k", 100, "job1")
+        assert repair.on_error(pending, "k", "job1", kind) == expect

@@ -149,3 +149,27 @@ def mark_unconfirmed(pending, key, owner):
     e = pending.get(key)
     if e and e.get("owner") == owner and not e.get("request_id"):
         e["unconfirmed"] = True
+
+
+def on_error(pending, key, owner, kind):
+    """生成過程出錯時怎麼處理佔位。回傳 "release" / "unconfirmed" / "keep"。
+
+    已經拿到 request id 的請求，代表 fal 已收下並計費：之後只是取結果或下載失敗，
+    無論錯誤類型都保留佔位，下次同輸入接回原請求，不重新付費。唯一例外是模型端回報
+    生成失敗（failed），那個請求已經不可能有結果，只能清掉。
+    """
+    e = pending.get(key) or {}
+    if e.get("owner") not in (None, owner):
+        return "keep"
+    if kind == "failed":
+        release(pending, key, owner)
+        return "release"
+    if e.get("request_id"):
+        return "keep"
+    if kind == "rejected":                 # 送出就被拒，確定沒被收下
+        release(pending, key, owner)
+        return "release"
+    if kind == "uncertain":                # 送出時結果不明，可能已計費
+        mark_unconfirmed(pending, key, owner)
+        return "unconfirmed"
+    return "keep"
