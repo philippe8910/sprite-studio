@@ -33,16 +33,21 @@ _SLOTS = threading.BoundedSemaphore(MAX_CONCURRENT)
 RETRY_STATUS = (408, 429, 500, 502, 503, 504)
 
 
-def _retry(fn, what, attempts=4, base=2.0, sleep=time.sleep):
-    """暫時性錯誤（429 / 5xx / 連線中斷）以指數退避重試；4xx 等確定性錯誤立刻拋出。"""
+def _retry(fn, what, attempts=4, base=2.0, sleep=time.sleep, retry_status=RETRY_STATUS,
+           retry_network=True):
+    """暫時性錯誤以指數退避重試；4xx 等確定性錯誤立刻拋出。
+
+    送出生成（submit）不是冪等的：逾時或 5xx 時 fal 可能其實已經收下並開始計費，
+    重送會變成付兩次錢。所以 submit 只在 429（確定沒被收下）時重試，其餘交給呼叫端決定。
+    """
     for i in range(attempts):
         try:
             return fn()
         except urllib.error.HTTPError as e:
-            if e.code not in RETRY_STATUS or i == attempts - 1:
+            if e.code not in retry_status or i == attempts - 1:
                 raise FalError(f"{what} {e.code}: {e.read().decode(errors='replace')[:400]}")
         except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
-            if i == attempts - 1:
+            if not retry_network or i == attempts - 1:
                 raise FalError(f"{what} 連線失敗：{e}")
         sleep(base * (2 ** i))
 
@@ -133,7 +138,8 @@ def resume(info, on_status=None, poll=2.0, timeout=1200):
 def _run(model, payload, on_status, poll, timeout, on_submit=None):
     headers = {"Authorization": f"Key {api_key()}", "Content-Type": "application/json"}
     body = json.dumps(payload).encode()
-    _, resp = _retry(lambda: _req(f"{QUEUE}/{model}", body, headers), "submit")
+    _, resp = _retry(lambda: _req(f"{QUEUE}/{model}", body, headers), "submit",
+                     retry_status=(429,), retry_network=False)
     start = json.loads(resp)
     rid = start.get("request_id")
     info = {"model": model, "request_id": rid,

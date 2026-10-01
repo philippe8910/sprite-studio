@@ -64,7 +64,7 @@ python tools/eval_sprites.py <素材資料夾> --json report.json
 ## 自動修復：評估 → 分類 → 只修壞掉的
 
 ```bash
-POST /api/projects/<pid>/repair   {"optimize_loops": true, "allow_paid": false}
+POST /api/projects/<pid>/repair   {"optimize_loops": true, "allow_paid": false, "max_paid": 3}
 ```
 
 打包後自動評估，依失敗類型決定修法，**先做免費的本地修復，修不好才花錢重新生成**，
@@ -75,7 +75,7 @@ POST /api/projects/<pid>/repair   {"optimize_loops": true, "allow_paid": false}
 | 循環接縫跳動／停頓 | 在整段影片中重新搜尋接縫最小的循環段，重挑幀 | 免費 |
 | 腳底漂移 | 開啟腳底對齊 | 免費 |
 | 被畫框切到 | 縮小 10% 重新置中 | 免費 |
-| 空白幀、幀數不足 | 以新 seed 重新生成影片，並自動挑循環段（需 `allow_paid`） | 付費 |
+| 空白幀、幀數不足 | 以新 seed 重新生成影片，並自動挑循環段（需 `allow_paid`，單次最多 `max_paid` 支） | 付費 |
 
 **實測（上方騎士的 walk）**：工具生成影片後的預設挑幀是每 10 幀取一張，
 開啟 `optimize_loops` 後自動找到週期 36 幀的循環段，**循環接縫 / 正常步距從 0.55 降到 0.23**，
@@ -93,19 +93,19 @@ POST /api/projects/<pid>/repair   {"optimize_loops": true, "allow_paid": false}
 |---|---|---|
 | 伺服器重啟，任務狀態消失 | 任務狀態寫入 `data/jobs.json`（暫存檔＋原子替換）；重啟時把未完成的任務標成「中斷」，不會謊報還在跑 | `jobstore.py` |
 | 同時送太多請求被限流 | 全域併發上限（預設 4，`FAL_MAX_CONCURRENT` 可調） | `falclient.py` |
-| 暫時性錯誤（429 / 5xx / 斷線） | 送出、取結果、下載都以指數退避重試；4xx 立即失敗不重送；輪詢連續失敗 20 次就放棄並回報 request id | `falclient.py` |
-| 下載失敗或重啟後重送 = 重複付費 | 送出後立刻記下 request id；同一組輸入（模型・提示詞・起始圖・參數的雜湊）再送出時，接回原請求取結果，不重新計費 | `server.py`、`repair.cache_key` |
+| 暫時性錯誤（429 / 5xx / 斷線） | 取結果、下載以指數退避重試；**送出只在 429 時重試**——逾時或 5xx 時 fal 可能已經收下並計費，重送會付兩次錢；輪詢連續失敗 20 次就放棄並回報 request id | `falclient.py` |
+| 下載失敗、重啟或並發造成重複付費 | 送出前先以輸入雜湊（模型・提示詞・起始圖・參數）在鎖內佔位，相同請求同時進來只有一個真的送出、其餘等待接回；送出後記下 request id，下載失敗或重啟後接回原請求取結果；模型回報失敗時清掉佔位，不會一直接回失敗的請求 | `server.py`、`repair.claim / release` |
 
 ## 測試
 
 ```bash
 pip install -r requirements-dev.txt
-pytest -q tests                                  # 19 個測試
+pytest -q tests                                  # 27 個測試
 python tools/eval_sprites.py examples/knight     # 範例素材評估
 ```
 
 涵蓋評估規則（空白幀、裁切、接縫、腳底、重複幀）、循環搜尋、修復計畫、快取鍵、
-重試與退避、接回既有請求不重送、任務重啟後的狀態。每次 push 由 GitHub Actions 自動執行。
+重試與退避、送出逾時不重送、生成佔位／接回／失敗釋放、接回既有請求不重送、任務重啟後的狀態。每次 push 由 GitHub Actions 自動執行。
 測試寫完後以「故意改壞程式」確認測試真的會失敗。
 
 ## 啟動

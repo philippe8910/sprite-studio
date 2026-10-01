@@ -76,3 +76,39 @@ def test_run_reports_submission_for_later_resume(monkeypatch):
     monkeypatch.setattr(falclient, "api_key", lambda: "k")
     falclient.run("fal-ai/x", {"prompt": "p"}, poll=0, on_submit=saved.append)
     assert saved and saved[0]["request_id"] == "r9"
+
+
+def test_submit_is_not_retried_on_timeout(monkeypatch):
+    # 逾時時 fal 可能已經收下並計費；重送會付兩次錢，所以 submit 不能自動重試
+    calls = []
+
+    def fake_req(url, data=None, headers=None, timeout=180):
+        calls.append(url)
+        raise TimeoutError("read timed out")
+
+    monkeypatch.setattr(falclient, "_req", fake_req)
+    monkeypatch.setattr(falclient, "api_key", lambda: "k")
+    with pytest.raises(falclient.FalError):
+        falclient.run("fal-ai/x", {"prompt": "p"}, poll=0)
+    assert len(calls) == 1
+
+
+def test_submit_retried_on_429(monkeypatch):
+    calls = []
+
+    def fake_req(url, data=None, headers=None, timeout=180):
+        if data is not None:
+            calls.append(url)
+            if len(calls) == 1:
+                raise http_error(429)
+            return 200, json.dumps({"request_id": "r2", "status_url": "https://q/r2/status",
+                                    "response_url": "https://q/r2"}).encode()
+        if url.endswith("/status"):
+            return 200, json.dumps({"status": "COMPLETED"}).encode()
+        return 200, json.dumps({"video": {"url": "https://v/2.mp4"}}).encode()
+
+    monkeypatch.setattr(falclient, "_req", fake_req)
+    monkeypatch.setattr(falclient, "api_key", lambda: "k")
+    monkeypatch.setattr(falclient.time, "sleep", lambda s: None)
+    falclient.run("fal-ai/x", {"prompt": "p"}, poll=0)
+    assert len(calls) == 2

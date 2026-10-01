@@ -1156,32 +1156,53 @@ def api_clip_generate(pid, clip):
         with open(img_path, "rb") as fimg:
             key = repair.cache_key(model["id"], prompt, neg, fimg.read(),
                                    {k: v for k, v in payload.items() if k not in ("image_url", "image_urls")})
-        with LOCK:
-            proj = load_project(pid)
-            pend = proj.setdefault("pending_gen", {}).get(key)
+        owner = job["id"]
+        # 佔位與判斷在同一把鎖內完成：兩個相同請求同時進來時只有一個會真的送出
+        deadline = time.time() + 60
+        while True:
+            with LOCK:
+                proj = load_project(pid)
+                decision, pend = repair.claim(proj.setdefault("pending_gen", {}), key, now(), owner)
+                save_project(proj)
+            if decision != "wait" or time.time() > deadline:
+                break
+            job["message"] = "相同請求正在送出，等待接回…"
+            time.sleep(2)
+
+        def release():
+            with LOCK:
+                proj = load_project(pid)
+                repair.release(proj.get("pending_gen", {}), key, owner)
+                save_project(proj)
+
         cost = model["price"]
-        if pend and now() - pend.get("created", 0) < 6 * 3600:
-            # 同一組輸入的請求已經送過（可能上次下載失敗或伺服器重啟）：接回去拿結果，不再付費
-            job["message"] = "沿用先前送出的同一請求…"
-            result = falclient.resume(pend, on_status=status, poll=2.5, timeout=1800)
-            cost = 0.0
-        else:
-            def on_submit(info):
-                with LOCK:
-                    proj = load_project(pid)
-                    proj.setdefault("pending_gen", {})[key] = dict(info, created=now(), clip=clip)
-                    save_project(proj)
-            result = falclient.run(model["id"], payload, on_status=status, poll=2.5, timeout=1800,
-                                   on_submit=on_submit)
-        url = falclient.first_video_url(result)
-        vpath = os.path.join(pdir(pid), "videos", f"{clip}_{take_id}.mp4")
-        os.makedirs(os.path.dirname(vpath), exist_ok=True)
-        falclient.download(url, vpath)
+        try:
+            if decision == "resume":
+                # 同一組輸入的請求已經送過（上次下載失敗、重啟或並發）：接回去拿結果，不再付費
+                job["message"] = "沿用先前送出的同一請求…"
+                result = falclient.resume(pend, on_status=status, poll=2.5, timeout=1800)
+                cost = 0.0
+            else:
+                def on_submit(info):
+                    with LOCK:
+                        proj = load_project(pid)
+                        proj.setdefault("pending_gen", {})[key] = dict(info, created=now(), clip=clip,
+                                                                       owner=owner)
+                        save_project(proj)
+                result = falclient.run(model["id"], payload, on_status=status, poll=2.5, timeout=1800,
+                                       on_submit=on_submit)
+            url = falclient.first_video_url(result)
+            vpath = os.path.join(pdir(pid), "videos", f"{clip}_{take_id}.mp4")
+            os.makedirs(os.path.dirname(vpath), exist_ok=True)
+            falclient.download(url, vpath)
+        except falclient.FalError as e:
+            # 模型端判定失敗（FAILED）就不能再接回這個請求，清掉佔位；
+            # 只是下載或輪詢中斷則保留，下次同輸入可接回而不重複付費
+            if "generation failed" in str(e) or "submit" in str(e):
+                release()
+            raise
         out = finish_take(vpath, {"model": model_key, "cost": cost, "gen_key": key})
-        with LOCK:
-            proj = load_project(pid)
-            proj.get("pending_gen", {}).pop(key, None)    # 成功存成 take 才清掉
-            save_project(proj)
+        release()     # 成功存成 take 才清掉
         return out
 
     run_job(job, work_local if is_local else work)
@@ -1453,6 +1474,7 @@ def api_repair(pid):
     """
     body = request.get_json(force=True, silent=True) or {}
     allow_paid = bool(body.get("allow_paid"))
+    max_paid = int(body.get("max_paid", 3))          # 單次修復最多付費重生幾支，避免失控燒錢
     optimize_loops = bool(body.get("optimize_loops"))
     out_dir = os.path.join(pdir(pid), "out")
     if not os.path.exists(os.path.join(out_dir, "anims.json")):
@@ -1475,25 +1497,32 @@ def api_repair(pid):
             log["after"] = log["before"]
             job["message"] = "全部通過，不需修復"
         else:
+            # 讀幀算特徵很慢，先在鎖外算好，再進鎖改設定
+            snap = load_project(pid)
+            sigs_by, paid = {}, []
+            for anim, acts in plans.items():
+                c = snap["clips"].get(anim)
+                if not c:
+                    continue
+                if not acts[0]["free"]:
+                    paid.append(anim)
+                    continue
+                if any(a["action"] == "reloop" for a in acts):
+                    take = next((t for t in c.get("takes", []) if t["id"] == c.get("selected_take")),
+                                (c.get("takes") or [None])[0])
+                    if take:
+                        sigs_by[anim] = pipeline.frame_signatures(
+                            os.path.join(pdir(pid), take["frames_dir"]), take["count"])
             with LOCK:
                 p = load_project(pid)
-                paid = []
                 for anim, acts in plans.items():
                     c = p["clips"].get(anim)
-                    if not c:
-                        continue
-                    if not acts[0]["free"]:
-                        paid.append(anim)
-                        continue
-                    sigs = None
-                    if any(a["action"] == "reloop" for a in acts):
-                        take = next((t for t in c.get("takes", []) if t["id"] == c.get("selected_take")),
-                                    (c.get("takes") or [None])[0])
-                        if take:
-                            sigs = pipeline.frame_signatures(os.path.join(pdir(pid), take["frames_dir"]),
-                                                             take["count"])
-                    log["actions"][anim] = repair.apply_free(c, acts, sigs)
+                    if c and acts[0]["free"]:
+                        log["actions"][anim] = repair.apply_free(c, acts, sigs_by.get(anim))
                 save_project(p)
+            if len(paid) > max_paid:
+                log["skipped_over_budget"] = paid[max_paid:]
+                paid = paid[:max_paid]
             if allow_paid and paid:
                 client = app.test_client()
                 for anim in paid:
@@ -1504,17 +1533,19 @@ def api_repair(pid):
                     if j.get("status") != "done":
                         log["regenerated"].append({"anim": anim, "ok": False, "error": j.get("error")})
                         continue
+                    c = load_project(pid)["clips"][anim]
+                    take = c["takes"][0]
+                    lp = None
+                    if c.get("loop", True):
+                        sigs = pipeline.frame_signatures(os.path.join(pdir(pid), take["frames_dir"]),
+                                                         take["count"])
+                        lp = repair.best_loop(sigs, max(4, len(c.get("frames") or []) or 8))
                     with LOCK:
                         p = load_project(pid)
                         c = p["clips"][anim]
-                        take = c["takes"][0]
                         log["cost_usd"] += float(take.get("cost") or 0)
-                        if c.get("loop", True):
-                            sigs = pipeline.frame_signatures(os.path.join(pdir(pid), take["frames_dir"]),
-                                                             take["count"])
-                            lp = repair.best_loop(sigs, max(4, len(c.get("frames") or []) or 8))
-                            if lp:
-                                c["frames"] = lp["frames"]
+                        if lp:
+                            c["frames"] = lp["frames"]
                         save_project(p)
                     log["regenerated"].append({"anim": anim, "ok": True, "take": take["id"]})
             job["message"] = "重新打包…"

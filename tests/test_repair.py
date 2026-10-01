@@ -49,3 +49,46 @@ def test_cache_key_stable_and_sensitive():
     assert k == repair.cache_key("m", "p", "n", b"img", {"duration": "5", "seed": 1})
     assert k != repair.cache_key("m", "p", "n", b"img2", {"seed": 1, "duration": "5"})
     assert k != repair.cache_key("m", "p", "n", b"img", {"seed": 2, "duration": "5"})
+
+
+def test_claim_submit_then_resume_after_request_id():
+    pending = {}
+    assert repair.claim(pending, "k", 100, "job1")[0] == "submit"
+    pending["k"].update(request_id="r1", status_url="s", response_url="r")
+    decision, entry = repair.claim(pending, "k", 200, "job2")
+    assert decision == "resume" and entry["request_id"] == "r1"     # 不重新送出＝不重複付費
+
+
+def test_claim_concurrent_same_input_waits():
+    pending = {}
+    assert repair.claim(pending, "k", 100, "job1")[0] == "submit"
+    assert repair.claim(pending, "k", 101, "job2")[0] == "wait"      # 另一個任務正在送出
+
+
+def test_stale_claim_is_taken_over():
+    pending = {}
+    repair.claim(pending, "k", 100, "job1")                           # 佔位後卡住沒送出
+    assert repair.claim(pending, "k", 100 + repair.CLAIM_TTL + 1, "job2")[0] == "submit"
+
+
+def test_release_after_failure_allows_fresh_submit():
+    pending = {}
+    repair.claim(pending, "k", 100, "job1")
+    pending["k"].update(request_id="r1")
+    repair.release(pending, "k", "job1")                              # 模型回 FAILED → 清掉
+    assert repair.claim(pending, "k", 200, "job2")[0] == "submit"    # 不會一直接回失敗的請求
+
+
+def test_release_does_not_remove_someone_elses_claim():
+    pending = {}
+    repair.claim(pending, "k", 100, "job2")
+    repair.release(pending, "k", "job1")
+    assert "k" in pending
+
+
+def test_release_cannot_clear_another_jobs_live_request():
+    pending = {}
+    repair.claim(pending, "k", 100, "job1")
+    pending["k"].update(request_id="r1")              # job1 的請求還在跑
+    repair.release(pending, "k", "job2")               # 別的任務失敗時不能把它清掉
+    assert pending["k"]["request_id"] == "r1"

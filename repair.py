@@ -108,3 +108,34 @@ def cache_key(model_id, prompt, neg, image_bytes, opts):
     h.update(b"\0" + hashlib.sha256(image_bytes or b"").digest())
     h.update(b"\0" + json.dumps(opts or {}, sort_keys=True, ensure_ascii=False).encode())
     return h.hexdigest()[:24]
+
+
+# ---------------------------------------------------------------- 生成去重
+CLAIM_TTL = 10 * 60          # 已佔位但還沒拿到 request id 的上限（送出卡住就放棄佔位）
+RESUME_TTL = 6 * 3600        # 已送出的請求在這段時間內都可以接回
+
+
+def claim(pending, key, now, owner):
+    """送出生成前先決定要怎麼做，並在 pending 裡原地佔位（呼叫端需持鎖）。
+
+    回傳：
+      ("resume", entry) 同一組輸入的請求已經送出 → 接回去拿結果，不再付費
+      ("wait", entry)   另一個任務剛佔位、正在送出 → 稍等它拿到 request id 再接回
+      ("submit", None)  沒有可沿用的請求 → 已替 owner 佔位，可以送出
+    """
+    e = pending.get(key)
+    if e:
+        age = now - e.get("created", 0)
+        if e.get("request_id") and age < RESUME_TTL:
+            return "resume", e
+        if not e.get("request_id") and e.get("owner") != owner and age < CLAIM_TTL:
+            return "wait", e
+    pending[key] = {"owner": owner, "created": now}
+    return "submit", None
+
+
+def release(pending, key, owner=None):
+    """生成失敗或成功存檔後清掉佔位（owner 給定時只清自己的，避免清到別人新佔的）。"""
+    e = pending.get(key)
+    if e and (owner is None or e.get("owner") == owner):
+        pending.pop(key, None)
