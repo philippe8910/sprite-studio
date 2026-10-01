@@ -121,11 +121,14 @@ def claim(pending, key, now, owner):
     回傳：
       ("resume", entry) 同一組輸入的請求已經送出 → 接回去拿結果，不再付費
       ("wait", entry)   另一個任務剛佔位、正在送出 → 稍等它拿到 request id 再接回
+      ("blocked", entry) 上次送出結果不明（可能已計費）→ CLAIM_TTL 內不自動重送
       ("submit", None)  沒有可沿用的請求 → 已替 owner 佔位，可以送出
     """
     e = pending.get(key)
     if e:
         age = now - e.get("created", 0)
+        if e.get("unconfirmed") and not e.get("request_id") and age < CLAIM_TTL:
+            return "blocked", e
         if e.get("request_id") and age < RESUME_TTL:
             return "resume", e
         if not e.get("request_id") and e.get("owner") != owner and age < CLAIM_TTL:
@@ -139,3 +142,10 @@ def release(pending, key, owner=None):
     e = pending.get(key)
     if e and (owner is None or e.get("owner") == owner):
         pending.pop(key, None)
+
+
+def mark_unconfirmed(pending, key, owner):
+    """送出時結果不明：保留佔位並標記，避免使用者馬上重按造成重複付費。"""
+    e = pending.get(key)
+    if e and e.get("owner") == owner and not e.get("request_id"):
+        e["unconfirmed"] = True

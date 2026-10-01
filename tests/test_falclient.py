@@ -112,3 +112,19 @@ def test_submit_retried_on_429(monkeypatch):
     monkeypatch.setattr(falclient.time, "sleep", lambda s: None)
     falclient.run("fal-ai/x", {"prompt": "p"}, poll=0)
     assert len(calls) == 2
+
+
+def test_error_kinds_distinguish_safe_and_unsafe_resubmits():
+    def raise_(err):
+        def fn():
+            raise err
+        return fn
+    with pytest.raises(falclient.FalError) as e:
+        falclient._retry(raise_(http_error(422)), "submit", sleep=lambda s: None)
+    assert e.value.kind == "rejected"
+    with pytest.raises(falclient.FalError) as e:
+        falclient._retry(raise_(http_error(503)), "submit", retry_status=(429,), sleep=lambda s: None)
+    assert e.value.kind == "uncertain"
+    with pytest.raises(falclient.FalError) as e:
+        falclient._retry(raise_(TimeoutError("t")), "submit", retry_network=False, sleep=lambda s: None)
+    assert e.value.kind == "uncertain"

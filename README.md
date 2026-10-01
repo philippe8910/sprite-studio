@@ -81,6 +81,10 @@ POST /api/projects/<pid>/repair   {"optimize_loops": true, "allow_paid": false, 
 開啟 `optimize_loops` 後自動找到週期 36 幀的循環段，**循環接縫 / 正常步距從 0.55 降到 0.23**，
 整個修復 3.6 秒、花費 $0。
 
+> 指標說明：這裡的「循環接縫 / 正常步距」是在**原始影片**的縮小灰階特徵上計算（`repair.best_loop`），用來挑幀；
+> `eval_sprites.py` 報告中的 `seam_ratio` 則是對**打包後**的 sprite 逐像素計算（含去背、對齊、縮放），兩者尺度不同、不能直接比較。
+> 例如 `examples/knight` 的 walk 在評估報告中 `seam_ratio` 為 0.94（< 2.5 即通過）。
+
 ![預設挑幀 vs 自動搜尋循環段](docs/img/loop_before_after.png)
 
 **已知限制**：事後評估的接縫檢查對「側面走路只取半個週期」這類錯誤不敏感——
@@ -94,13 +98,13 @@ POST /api/projects/<pid>/repair   {"optimize_loops": true, "allow_paid": false, 
 | 伺服器重啟，任務狀態消失 | 任務狀態寫入 `data/jobs.json`（暫存檔＋原子替換）；重啟時把未完成的任務標成「中斷」，不會謊報還在跑 | `jobstore.py` |
 | 同時送太多請求被限流 | 全域併發上限（預設 4，`FAL_MAX_CONCURRENT` 可調） | `falclient.py` |
 | 暫時性錯誤（429 / 5xx / 斷線） | 取結果、下載以指數退避重試；**送出只在 429 時重試**——逾時或 5xx 時 fal 可能已經收下並計費，重送會付兩次錢；輪詢連續失敗 20 次就放棄並回報 request id | `falclient.py` |
-| 下載失敗、重啟或並發造成重複付費 | 送出前先以輸入雜湊（模型・提示詞・起始圖・參數）在鎖內佔位，相同請求同時進來只有一個真的送出、其餘等待接回；送出後記下 request id，下載失敗或重啟後接回原請求取結果；模型回報失敗時清掉佔位，不會一直接回失敗的請求 | `server.py`、`repair.claim / release` |
+| 下載失敗、重啟或並發造成重複付費 | 送出前先以輸入雜湊（模型・提示詞・起始圖・參數）在鎖內佔位，相同請求同時進來只有一個真的送出、其餘等待接回；送出後記下 request id，下載失敗或重啟後接回原請求取結果；模型回報失敗或確定被拒時清掉佔位；送出時逾時或 5xx（結果不明、可能已計費）則保留佔位並標記，10 分鐘內不自動重送。錯誤以類型（rejected / uncertain / failed）判斷，不靠比對訊息字串 | `server.py`、`repair.claim / release` |
 
 ## 測試
 
 ```bash
 pip install -r requirements-dev.txt
-pytest -q tests                                  # 27 個測試
+pytest -q tests                                  # 29 個測試
 python tools/eval_sprites.py examples/knight     # 範例素材評估
 ```
 

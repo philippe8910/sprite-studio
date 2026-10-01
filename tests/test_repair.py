@@ -92,3 +92,11 @@ def test_release_cannot_clear_another_jobs_live_request():
     pending["k"].update(request_id="r1")              # job1 的請求還在跑
     repair.release(pending, "k", "job2")               # 別的任務失敗時不能把它清掉
     assert pending["k"]["request_id"] == "r1"
+
+
+def test_uncertain_submit_blocks_immediate_resubmit():
+    pending = {}
+    repair.claim(pending, "k", 100, "job1")
+    repair.mark_unconfirmed(pending, "k", "job1")       # 送出時逾時：fal 可能已經收下
+    assert repair.claim(pending, "k", 120, "job2")[0] == "blocked"
+    assert repair.claim(pending, "k", 100 + repair.CLAIM_TTL + 1, "job2")[0] == "submit"

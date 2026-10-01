@@ -24,7 +24,14 @@ PROBE = QUEUE + "/fal-ai/nano-banana/requests/00000000-0000-0000-0000-0000000000
 
 
 class FalError(RuntimeError):
-    pass
+    """kind 讓呼叫端判斷能不能安全重送：
+    rejected  確定沒被收下（4xx、429 用完重試）→ 可以重送
+    uncertain 結果不明（送出時逾時、斷線、5xx）→ fal 可能已收下並計費，不可自動重送
+    failed    模型端回報生成失敗 → 這個請求不能再接回
+    """
+    def __init__(self, msg, kind=None):
+        super().__init__(msg)
+        self.kind = kind
 
 
 # 同時送出的生成任務上限（fal 帳號有併發限制；超過會吃 429）。可用環境變數調整。
@@ -45,10 +52,11 @@ def _retry(fn, what, attempts=4, base=2.0, sleep=time.sleep, retry_status=RETRY_
             return fn()
         except urllib.error.HTTPError as e:
             if e.code not in retry_status or i == attempts - 1:
-                raise FalError(f"{what} {e.code}: {e.read().decode(errors='replace')[:400]}")
+                raise FalError(f"{what} {e.code}: {e.read().decode(errors='replace')[:400]}",
+                               kind="uncertain" if e.code >= 500 else "rejected")
         except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
             if not retry_network or i == attempts - 1:
-                raise FalError(f"{what} 連線失敗：{e}")
+                raise FalError(f"{what} 連線失敗：{e}", kind="uncertain")
         sleep(base * (2 ** i))
 
 
@@ -185,7 +193,7 @@ def _poll(info, headers, on_status, poll, timeout, max_poll_errors=20):
             _, result = _retry(lambda: _req(response_url, headers=headers, timeout=120), "result")
             return json.loads(result)
         if s in ("FAILED", "ERROR"):
-            raise FalError("generation failed: " + b.decode(errors="replace")[:400])
+            raise FalError("generation failed: " + b.decode(errors="replace")[:400], kind="failed")
     raise FalError("timeout waiting for fal.ai")
 
 

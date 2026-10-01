@@ -1169,6 +1169,10 @@ def api_clip_generate(pid, clip):
             job["message"] = "相同請求正在送出，等待接回…"
             time.sleep(2)
 
+        if decision == "blocked":
+            raise RuntimeError("同一組輸入上次送出時結果不明（fal 可能已收下並計費），"
+                               "10 分鐘內不自動重送；請到 fal 後台確認後再試")
+
         def release():
             with LOCK:
                 proj = load_project(pid)
@@ -1196,10 +1200,13 @@ def api_clip_generate(pid, clip):
             os.makedirs(os.path.dirname(vpath), exist_ok=True)
             falclient.download(url, vpath)
         except falclient.FalError as e:
-            # 模型端判定失敗（FAILED）就不能再接回這個請求，清掉佔位；
-            # 只是下載或輪詢中斷則保留，下次同輸入可接回而不重複付費
-            if "generation failed" in str(e) or "submit" in str(e):
-                release()
+            if e.kind in ("failed", "rejected"):
+                release()              # 確定失敗或確定沒被收下：清掉佔位，之後可以重送
+            elif e.kind == "uncertain":
+                with LOCK:             # 結果不明：保留佔位並標記；已有 request id 的之後可接回
+                    proj = load_project(pid)
+                    repair.mark_unconfirmed(proj.get("pending_gen", {}), key, owner)
+                    save_project(proj)
             raise
         out = finish_take(vpath, {"model": model_key, "cost": cost, "gen_key": key})
         release()     # 成功存成 take 才清掉
